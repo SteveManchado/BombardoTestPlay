@@ -3,105 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BomberNet Engine</title>
+    <title>BomberNet Engine v0.4</title>
     <style>
-        /* RESET BÁSICO */
-        body {
-            margin: 0; padding: 0;
-            background-color: #000;
-            color: white;
-            font-family: monospace;
-            overflow: hidden; /* Sin barras de scroll */
-            touch-action: none; /* Desactivar zoom táctil */
-            height: 100vh; width: 100vw;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        /* CONTENEDOR DEL JUEGO (Mantiene Aspect Ratio) */
-        #game-container {
-            position: relative;
-            background: #111;
-            box-shadow: 0 0 50px rgba(255, 159, 67, 0.2);
-            /* Tamaño inicial por si falla JS */
-            width: 480px; height: 352px; 
-        }
-
-        canvas {
-            display: block;
-            width: 100%; height: 100%;
-            image-rendering: pixelated; /* PIXEL ART NÍTIDO */
-        }
-
-        /* CAPA DE UI (MENÚ) */
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(0, 0, 0, 0.7); /* Semitransparente para ver el juego detrás */
-            z-index: 100;
-        }
-        
-        .panel {
-            background: #222; padding: 20px; border: 4px solid #fff;
-            box-shadow: 0 10px 0 #000; text-align: center;
-        }
-
-        input {
-            display: block; margin: 10px auto; padding: 10px; font-size: 16px; 
-            background: #000; color: #fff; border: 2px solid #555; text-align: center;
-            font-family: monospace; text-transform: uppercase;
-        }
-        
-        button {
-            padding: 10px 20px; font-size: 16px; cursor: pointer;
-            background: #ff9f43; color: #000; border: 2px solid #fff;
-            font-weight: bold; font-family: monospace; text-transform: uppercase;
-        }
-        button:active { transform: translateY(4px); box-shadow: none; }
-
-        /* CONTROLES TÁCTILES */
-        #mobile-controls {
-            display: none; position: absolute; bottom: 10px; left: 10px;
-            width: 140px; height: 140px; z-index: 50;
-        }
-        .d-pad-btn {
-            position: absolute; width: 40px; height: 40px;
-            background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 5px;
-        }
-        .d-pad-btn:active { background: rgba(255, 159, 67, 0.5); }
-        
-        #btn-up { top: 0; left: 50px; }
-        #btn-down { bottom: 0; left: 50px; }
-        #btn-left { top: 50px; left: 0; }
-        #btn-right { top: 50px; right: 0; }
-
-        #action-btn {
-            display: none; position: absolute; bottom: 20px; right: 20px;
-            width: 70px; height: 70px; border-radius: 50%;
-            background: rgba(231, 76, 60, 0.4); border: 4px solid rgba(255,255,255,0.4);
-            z-index: 50;
-        }
+        /* --- ESTILOS IGUAL QUE ANTES (Resumidos) --- */
+        body { margin: 0; padding: 0; background: #000; height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; font-family: 'Courier New', monospace; }
+        #game-viewport { position: relative; background: #111; box-shadow: 0 0 0 2px #333; image-rendering: pixelated; }
+        canvas { display: block; width: 100%; height: 100%; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.8); z-index: 100; }
+        .panel { background: #2c3e50; border: 4px solid #ecf0f1; padding: 20px; box-shadow: 8px 8px 0 #000; text-align: center; }
+        h1 { color: #f1c40f; text-shadow: 2px 2px #c0392b; margin: 0 0 15px 0; font-size: 24px; }
+        input { padding: 8px; font-size: 14px; background: #000; color: #fff; border: 2px solid #fff; font-family: inherit; text-transform: uppercase; text-align: center; display: block; margin: 0 auto 10px auto; width: 120px; }
+        button { padding: 10px 20px; font-size: 14px; cursor: pointer; background: #e74c3c; color: white; border: 2px solid #fff; font-family: inherit; text-transform: uppercase; box-shadow: 4px 4px 0 #000; transition: transform 0.1s; }
+        button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
+        button:disabled { background: #7f8c8d; cursor: not-allowed; }
+        #status-log { font-size: 10px; color: #f1c40f; margin-top: 10px; }
+        #mobile-controls { display: none; position: absolute; bottom: 10px; left: 10px; width: 140px; height: 140px; z-index: 50; }
+        .d-pad-btn { position: absolute; width: 44px; height: 44px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.4); }
+        .d-pad-btn:active { background: rgba(241, 196, 15, 0.5); }
+        #btn-up { top: 0; left: 48px; } #btn-down { bottom: 0; left: 48px; } #btn-left { top: 48px; left: 0; } #btn-right { top: 48px; right: 0; }
+        #action-btn { display: none; position: absolute; bottom: 20px; right: 20px; width: 64px; height: 64px; background: rgba(231, 76, 60, 0.4); border: 4px solid rgba(255,255,255,0.4); border-radius: 50%; z-index: 50; }
         #action-btn:active { background: rgba(231, 76, 60, 0.8); }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
+    <div id="game-viewport">
         <canvas id="gameCanvas"></canvas>
-        
-        <!-- MENÚ PRINCIPAL -->
         <div id="ui-layer">
             <div class="panel">
-                <h1 style="color:#ff9f43; margin-bottom:5px;">BOMBER-NET</h1>
-                <div style="font-size:10px; color:#aaa; margin-bottom:15px;">HTML5 ENGINE v0.2</div>
-                
-                <input type="text" id="roomInput" placeholder="SALA (EJ: TEST)" value="TEST" maxlength="6">
+                <h1>BOMBERNET</h1>
+                <div style="font-size: 10px; margin-bottom: 10px;">GRID ENGINE v0.4</div>
+                <input type="text" id="roomInput" placeholder="SALA" value="TEST" maxlength="6">
                 <button id="btnPlay" onclick="startGame()">CONECTAR</button>
-                <div id="status-log" style="margin-top:10px; font-size:10px; color:#4cd137;">ONLINE</div>
+                <div id="status-log">OFFLINE</div>
             </div>
         </div>
-
-        <!-- TOUCH CONTROLS -->
         <div id="mobile-controls">
             <div id="btn-up" class="d-pad-btn"></div>
             <div id="btn-down" class="d-pad-btn"></div>
@@ -112,185 +48,224 @@
     </div>
 
 <script>
-/** * CONFIGURACIÓN DEL MOTOR
- */
+// --- CONFIGURACIÓN ---
 const CONFIG = {
-    RES_W: 480,  // Ancho lógico (15 celdas * 32px)
-    RES_H: 352,  // Alto lógico (11 celdas * 32px)
-    TILE: 32,    // Tamaño de celda
-    FPS: 60
+    TILE: 32,
+    COLS: 15,
+    ROWS: 11,
+    get WIDTH() { return this.COLS * this.TILE; },
+    get HEIGHT() { return this.ROWS * this.TILE; },
+    SPEED: 2
 };
 
-// --- ESTADO DEL JUEGO ---
+// --- MAPA LÓGICO (COLLISION MAP) ---
+// 0: Suelo, 1: Pared Indestructible (Gris)
+// Se generará dinámicamente en initGame()
+let mapGrid = [];
+
+const TILE_TYPE = {
+    EMPTY: 0,
+    WALL: 1,
+    BLOCK: 2 // Reservado para futuro
+};
+
+// --- ESTADO GLOBAL ---
 const state = {
     running: false,
-    connected: false,
-    input: { x:0, y:0, action:false },
+    input: { x: 0, y: 0, active: false },
     localPlayer: null,
     remotePlayer: null
 };
 
-// --- RED (NETWORK) ---
+// --- RED ---
 class Net {
-    constructor() {
-        this.ws = null;
-        this.rtc = null;
-        this.channel = null;
-        this.id = 0;
-    }
-
+    constructor() { this.ws=null; this.rtc=null; this.ch=null; this.id=0; }
     connect(room) {
-        log("Conectando WS...");
+        log("Conectando...");
         this.ws = new WebSocket('wss://bomber-server.onrender.com');
-        this.ws.onopen = () => this.ws.send(JSON.stringify({ type:'join', room:room }));
-        this.ws.onmessage = (e) => this.handleSig(JSON.parse(e.data));
+        this.ws.onopen = () => this.ws.send(JSON.stringify({type:'join', room:room}));
+        this.ws.onmessage = e => this.handle(JSON.parse(e.data));
     }
-
-    async handleSig(msg) {
-        switch(msg.type) {
-            case 'id': 
-                this.id = msg.id; 
-                onConnected(msg.id); 
-                break;
-            case 'peer_connected': 
-                this.initRTC(true); 
-                break;
+    async handle(m) {
+        switch(m.type) {
+            case 'id': this.id = m.id; onConnected(m.id); break;
+            case 'peer_connected': this.initRTC(true); break;
             case 'offer': 
                 if(!this.rtc) this.initRTC(false);
-                await this.rtc.setRemoteDescription(msg.sdp);
-                // Breve pausa para estabilidad
-                setTimeout(async () => {
-                    const ans = await this.rtc.createAnswer();
-                    await this.rtc.setLocalDescription(ans);
-                    this.sendSig({ type:'answer', sdp:ans });
+                await this.rtc.setRemoteDescription(m.sdp);
+                setTimeout(async()=>{
+                    const a = await this.rtc.createAnswer();
+                    await this.rtc.setLocalDescription(a);
+                    this.sig({type:'answer', sdp:a});
                 }, 100);
                 break;
-            case 'answer': 
-                await this.rtc.setRemoteDescription(msg.sdp); 
-                break;
-            case 'candidate': 
-                if(this.rtc) await this.rtc.addIceCandidate(msg.candidate); 
-                break;
+            case 'answer': await this.rtc.setRemoteDescription(m.sdp); break;
+            case 'candidate': if(this.rtc) await this.rtc.addIceCandidate(m.candidate); break;
         }
     }
-
-    sendSig(data) { if(this.ws) this.ws.send(JSON.stringify(data)); }
-
+    sig(d) { if(this.ws) this.ws.send(JSON.stringify(d)); }
     initRTC(isOfferer) {
-        log("Iniciando WebRTC...");
-        this.rtc = new RTCPeerConnection({ iceServers:[{urls:'stun:stun.l.google.com:19302'}] });
+        this.rtc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+        this.rtc.onicecandidate = e => { if(e.candidate) this.sig({type:'candidate', candidate:e.candidate}); };
+        this.rtc.onconnectionstatechange = () => { if(this.rtc.connectionState==='connected') onPeerJoin(); };
         
-        this.rtc.onicecandidate = e => { if(e.candidate) this.sendSig({type:'candidate', candidate:e.candidate}); };
-        this.rtc.onconnectionstatechange = () => {
-            if(this.rtc.connectionState === 'connected') onPeerJoin();
-        };
-
         if(isOfferer) {
-            this.channel = this.rtc.createDataChannel("game", {ordered:false, maxRetransmits:0});
-            this.setupChannel();
-            this.rtc.createOffer().then(o => { this.rtc.setLocalDescription(o); this.sendSig({type:'offer', sdp:o}); });
+            this.ch = this.rtc.createDataChannel("game", {ordered:false, maxRetransmits:0});
+            this.setupCh();
+            this.rtc.createOffer().then(o => { this.rtc.setLocalDescription(o); this.sig({type:'offer', sdp:o}); });
         } else {
-            this.rtc.ondatachannel = e => { this.channel = e.channel; this.setupChannel(); };
+            this.rtc.ondatachannel = e => { this.ch = e.channel; this.setupCh(); };
         }
     }
-
-    setupChannel() {
-        this.channel.onmessage = e => onNetData(JSON.parse(e.data));
-        this.channel.onopen = () => log("¡CANAL P2P ABIERTO!");
-    }
-
-    send(data) {
-        if(this.channel && this.channel.readyState==='open') this.channel.send(JSON.stringify(data));
-    }
+    setupCh() { this.ch.onmessage = e => onNetData(JSON.parse(e.data)); }
+    send(d) { if(this.ch && this.ch.readyState==='open') this.ch.send(JSON.stringify(d)); }
 }
 
-// --- CLASES DE JUEGO ---
+// --- JUEGO: JUGADOR ---
 class Player {
-    constructor(id, x, y, color) {
+    constructor(id, col, row, color) {
         this.id = id;
-        this.x = x; this.y = y;
-        this.tx = x; this.ty = y; // Target (para interpolación)
         this.color = color;
-        this.w = 24; this.h = 24; // Un poco más pequeño que el tile (32)
+        this.x = col * CONFIG.TILE;
+        this.y = row * CONFIG.TILE;
+        
+        this.isMoving = false;
+        this.targetX = this.x;
+        this.targetY = this.y;
     }
 
     update() {
-        // Interpolación suave hacia el objetivo
-        this.x += (this.tx - this.x) * 0.2;
-        this.y += (this.ty - this.y) * 0.2;
+        if (this.isMoving) {
+            // Moverse hacia el objetivo
+            if (this.x < this.targetX) this.x += CONFIG.SPEED;
+            if (this.x > this.targetX) this.x -= CONFIG.SPEED;
+            if (this.y < this.targetY) this.y += CONFIG.SPEED;
+            if (this.y > this.targetY) this.y -= CONFIG.SPEED;
+
+            if (this.x === this.targetX && this.y === this.targetY) {
+                this.isMoving = false;
+                this.checkInput(); // Encadenar movimiento si se mantiene pulsado
+            }
+        } else {
+            this.checkInput();
+        }
+    }
+
+    checkInput() {
+        if (this.id !== net.id) return; 
+
+        if (state.input.active) {
+            // Calcular celda deseada (Grid Coordinates)
+            let currentCol = Math.round(this.x / CONFIG.TILE);
+            let currentRow = Math.round(this.y / CONFIG.TILE);
+            
+            let nextCol = currentCol + state.input.x;
+            let nextRow = currentRow + state.input.y;
+
+            // 1. CHEQUEO DE LÍMITES (Array Bounds)
+            if (nextCol < 0 || nextCol >= CONFIG.COLS || nextRow < 0 || nextRow >= CONFIG.ROWS) {
+                return; // Fuera del mapa, no nos movemos
+            }
+
+            // 2. CHEQUEO DE COLISIÓN (Paredes)
+            // Si la celda destino NO es suelo (0), no nos movemos
+            if (mapGrid[nextRow][nextCol] !== TILE_TYPE.EMPTY) {
+                return; // Chocamos contra pared
+            }
+
+            // Si llegamos aquí, el camino es libre
+            this.targetX = nextCol * CONFIG.TILE;
+            this.targetY = nextRow * CONFIG.TILE;
+            this.isMoving = true;
+            
+            net.send({ t:'m', tx:this.targetX, ty:this.targetY, x:this.x, y:this.y });
+        }
     }
 
     draw(ctx) {
-        // Dibujar centrado en el tile
-        // Las coordenadas x,y son top-left del tile lógico
-        const cx = this.x + (CONFIG.TILE - this.w)/2;
-        const cy = this.y + (CONFIG.TILE - this.h)/2;
-
+        // Dibujo
         ctx.fillStyle = this.color;
-        ctx.fillRect(cx, cy, this.w, this.h);
+        ctx.fillRect(this.x + 2, this.y + 2, CONFIG.TILE - 4, CONFIG.TILE - 4);
         
-        // Ojos
+        ctx.strokeStyle = "rgba(0,0,0,0.5)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.x + 2, this.y + 2, CONFIG.TILE - 4, CONFIG.TILE - 4);
+
         ctx.fillStyle = "white";
-        ctx.fillRect(cx+4, cy+4, 6, 6);
-        ctx.fillRect(cx+14, cy+4, 6, 6);
+        ctx.fillRect(this.x + 8, this.y + 8, 4, 4);
+        ctx.fillRect(this.x + 20, this.y + 8, 4, 4);
     }
 }
 
-// --- MOTOR GRÁFICO ---
+// --- SISTEMA ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const net = new Net();
 
 function init() {
-    // Configurar Canvas
     ctx.imageSmoothingEnabled = false;
-    resize();
-    window.addEventListener('resize', resize);
-    
-    // Inputs
+    resizeViewport();
+    window.addEventListener('resize', resizeViewport);
     setupInputs();
-
-    // Arrancar Loop INMEDIATAMENTE para ver el grid
-    requestAnimationFrame(loop);
+    
+    // Generar mapa inicial (Solo visual por ahora hasta que conectemos)
+    generateMap(); 
+    
+    requestAnimationFrame(gameLoop);
 }
 
-function resize() {
-    const winW = window.innerWidth;
-    const winH = window.innerHeight;
-    const scale = Math.min(winW / CONFIG.RES_W, winH / CONFIG.RES_H);
-    
-    const cont = document.getElementById('game-container');
-    cont.style.width = (CONFIG.RES_W * scale) + 'px';
-    cont.style.height = (CONFIG.RES_H * scale) + 'px';
-    
-    // Canvas interno siempre tiene resolución lógica fija
-    canvas.width = CONFIG.RES_W;
-    canvas.height = CONFIG.RES_H;
-    ctx.imageSmoothingEnabled = false; // Reaplicar al redimensionar
+function generateMap() {
+    mapGrid = [];
+    for(let r=0; r<CONFIG.ROWS; r++) {
+        let row = [];
+        for(let c=0; c<CONFIG.COLS; c++) {
+            // Lógica Clásica Bomberman:
+            // - Bordes son Pared (1)
+            // - Celdas pares (2,2), (2,4)... son Pilares (1)
+            // - El resto es Suelo (0)
+            
+            if (r===0 || c===0 || r===CONFIG.ROWS-1 || c===CONFIG.COLS-1) {
+                row.push(TILE_TYPE.WALL);
+            } else if (r%2===0 && c%2===0) {
+                row.push(TILE_TYPE.WALL);
+            } else {
+                row.push(TILE_TYPE.EMPTY);
+            }
+        }
+        mapGrid.push(row);
+    }
 }
 
-// --- LOGICA DE JUEGO ---
+function resizeViewport() {
+    const scale = Math.min(window.innerWidth / CONFIG.WIDTH, window.innerHeight / CONFIG.HEIGHT);
+    const vp = document.getElementById('game-viewport');
+    vp.style.width = (CONFIG.WIDTH * scale) + "px";
+    vp.style.height = (CONFIG.HEIGHT * scale) + "px";
+    canvas.width = CONFIG.WIDTH;
+    canvas.height = CONFIG.HEIGHT;
+    ctx.imageSmoothingEnabled = false;
+}
+
+// --- LÓGICA JUEGO ---
 function startGame() {
     const room = document.getElementById('roomInput').value;
     if(!room) return;
     document.getElementById('btnPlay').disabled = true;
-    document.getElementById('btnPlay').innerText = "CONECTANDO...";
+    document.getElementById('btnPlay').innerText = "...";
     net.connect(room.toUpperCase());
 }
 
-function onConnected(myId) {
+function onConnected(id) {
     document.getElementById('ui-layer').style.display = 'none';
-    state.connected = true;
+    net.id = id;
+    // Spawn seguro: (1,1) para P1, (W-2, H-2) para P2
+    // Estas coordenadas siempre son suelo (0) en nuestro algoritmo
+    const c = id===1 ? '#3498db' : '#e74c3c';
+    const cx = id===1 ? 1 : CONFIG.COLS - 2;
+    const cy = id===1 ? 1 : CONFIG.ROWS - 2;
     
-    // Spawn propio
-    const color = myId===1 ? '#3498db' : '#e74c3c';
-    // Posición inicial: 1,1 o Esquina opuesta
-    const sx = myId===1 ? CONFIG.TILE : CONFIG.RES_W - CONFIG.TILE*2;
-    const sy = myId===1 ? CONFIG.TILE : CONFIG.RES_H - CONFIG.TILE*2;
+    state.localPlayer = new Player(id, cx, cy, c);
     
-    state.localPlayer = new Player(myId, sx, sy, color);
-    
-    // Activar controles táctiles si es móvil
     if('ontouchstart' in window) {
         document.getElementById('mobile-controls').style.display = 'block';
         document.getElementById('action-btn').style.display = 'block';
@@ -298,132 +273,106 @@ function onConnected(myId) {
 }
 
 function onPeerJoin() {
-    log("¡RIVAL ENTRÓ!");
-    const rivalId = state.localPlayer.id === 1 ? 2 : 1;
-    const color = rivalId===1 ? '#3498db' : '#e74c3c';
-    const sx = rivalId===1 ? CONFIG.TILE : CONFIG.RES_W - CONFIG.TILE*2;
-    const sy = rivalId===1 ? CONFIG.TILE : CONFIG.RES_H - CONFIG.TILE*2;
-    
-    state.remotePlayer = new Player(rivalId, sx, sy, color);
+    log("Rival conectado");
+    const rid = net.id===1 ? 2 : 1;
+    const c = rid===1 ? '#3498db' : '#e74c3c';
+    const cx = rid===1 ? 1 : CONFIG.COLS - 2;
+    const cy = rid===1 ? 1 : CONFIG.ROWS - 2;
+    state.remotePlayer = new Player(rid, cx, cy, c);
 }
 
-function onNetData(data) {
-    if(state.remotePlayer && data.t === 'm') {
-        state.remotePlayer.tx = data.x;
-        state.remotePlayer.ty = data.y;
+function onNetData(d) {
+    if (state.remotePlayer && d.t === 'm') {
+        state.remotePlayer.x = d.x;
+        state.remotePlayer.y = d.y;
+        state.remotePlayer.targetX = d.tx;
+        state.remotePlayer.targetY = d.ty;
+        state.remotePlayer.isMoving = true;
     }
 }
 
-// --- BUCLE PRINCIPAL ---
-function loop() {
+function gameLoop() {
     update();
     draw();
-    requestAnimationFrame(loop);
+    requestAnimationFrame(gameLoop);
 }
 
 function update() {
-    if(!state.localPlayer) return;
-
-    // Movimiento Local
-    const SPEED = 2.5;
-    let dx=0, dy=0;
+    if (state.localPlayer) state.localPlayer.update();
     
-    if(state.input.y < 0) dy = -SPEED;
-    if(state.input.y > 0) dy = SPEED;
-    if(state.input.x < 0) dx = -SPEED;
-    if(state.input.x > 0) dx = SPEED;
-
-    const p = state.localPlayer;
-    let nx = p.tx + dx;
-    let ny = p.ty + dy;
-
-    // Colisiones Bordes Mapa
-    if(nx < CONFIG.TILE) nx = CONFIG.TILE;
-    if(ny < CONFIG.TILE) ny = CONFIG.TILE;
-    if(nx > CONFIG.RES_W - CONFIG.TILE*2) nx = CONFIG.RES_W - CONFIG.TILE*2;
-    if(ny > CONFIG.RES_H - CONFIG.TILE*2) ny = CONFIG.RES_H - CONFIG.TILE*2;
-
-    p.tx = nx;
-    p.ty = ny;
-    p.update(); // Interpolar localmente también para suavidad visual
-
-    // Enviar Red (Solo si me muevo)
-    if(dx!==0 || dy!==0) {
-        net.send({ t:'m', x:p.tx, y:p.ty });
+    if (state.remotePlayer) {
+        const p = state.remotePlayer;
+        if (p.isMoving) {
+            // Movimiento remoto (sin chequeo de colisión, confiamos en el rival)
+            if (p.x < p.targetX) p.x += CONFIG.SPEED;
+            if (p.x > p.targetX) p.x -= CONFIG.SPEED;
+            if (p.y < p.targetY) p.y += CONFIG.SPEED;
+            if (p.y > p.targetY) p.y -= CONFIG.SPEED;
+            if (p.x === p.targetX && p.y === p.targetY) p.isMoving = false;
+        }
     }
-
-    if(state.remotePlayer) state.remotePlayer.update();
 }
 
 function draw() {
-    // 1. Fondo
-    ctx.fillStyle = "#2b3a42";
-    ctx.fillRect(0,0, canvas.width, canvas.height);
+    // Fondo
+    ctx.fillStyle = "#222";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Grid (Suelo)
+    // Mapa basado en Matriz
     const T = CONFIG.TILE;
-    for(let y=0; y<CONFIG.RES_H; y+=T) {
-        for(let x=0; x<CONFIG.RES_W; x+=T) {
-            // Bordes Fijos (Pared Indestructible)
-            if(x===0 || y===0 || x>=CONFIG.RES_W-T || y>=CONFIG.RES_H-T) {
-                ctx.fillStyle = "#535c68"; // Pared Gris
-                ctx.fillRect(x,y,T,T);
-                drawPixelBorder(x,y,T, "#2c3e50");
-            } else if ((x/T)%2===0 && (y/T)%2===0) {
-                // Pilares internos
-                ctx.fillStyle = "#535c68";
-                ctx.fillRect(x,y,T,T);
-                drawPixelBorder(x,y,T, "#2c3e50");
+    for(let r=0; r<CONFIG.ROWS; r++) {
+        for(let c=0; c<CONFIG.COLS; c++) {
+            const x = c*T; const y = r*T;
+            const cell = mapGrid[r][c];
+
+            if (cell === TILE_TYPE.WALL) {
+                // Pared
+                ctx.fillStyle = "#7f8c8d";
+                ctx.fillRect(x, y, T, T);
+                // Sombra 3D simple
+                ctx.fillStyle = "#555";
+                ctx.fillRect(x, y+T-4, T, 4);
+                ctx.fillRect(x+T-4, y, 4, T);
             } else {
-                // Suelo Caminable
-                ctx.strokeStyle = "rgba(255,255,255,0.03)";
-                ctx.lineWidth = 1;
-                ctx.strokeRect(x,y,T,T);
+                // Suelo
+                ctx.fillStyle = (r+c)%2===0 ? "#27ae60" : "#2ecc71";
+                ctx.fillRect(x, y, T, T);
             }
         }
     }
 
-    // 3. Jugadores
-    if(state.remotePlayer) state.remotePlayer.draw(ctx);
-    if(state.localPlayer) state.localPlayer.draw(ctx);
-}
-
-function drawPixelBorder(x, y, s, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y+s-4, s, 4); // Sombra abajo
-    ctx.fillRect(x+s-4, y, 4, s); // Sombra derecha
+    if (state.remotePlayer) state.remotePlayer.draw(ctx);
+    if (state.localPlayer) state.localPlayer.draw(ctx);
 }
 
 // --- INPUTS ---
 function setupInputs() {
-    // Teclado
+    const setDir = (x, y) => { state.input.x = x; state.input.y = y; state.input.active = (x!==0 || y!==0); };
+    
     window.onkeydown = e => {
-        if(e.key==='ArrowUp' || e.key==='w') state.input.y = -1;
-        if(e.key==='ArrowDown' || e.key==='s') state.input.y = 1;
-        if(e.key==='ArrowLeft' || e.key==='a') state.input.x = -1;
-        if(e.key==='ArrowRight' || e.key==='d') state.input.x = 1;
+        if(e.repeat) return;
+        if(e.key==='ArrowUp'||e.key==='w') setDir(0,-1);
+        if(e.key==='ArrowDown'||e.key==='s') setDir(0,1);
+        if(e.key==='ArrowLeft'||e.key==='a') setDir(-1,0);
+        if(e.key==='ArrowRight'||e.key==='d') setDir(1,0);
     };
+    
     window.onkeyup = e => {
-        if(['ArrowUp','w','ArrowDown','s'].includes(e.key)) state.input.y = 0;
-        if(['ArrowLeft','a','ArrowRight','d'].includes(e.key)) state.input.x = 0;
+        if(['ArrowUp','w','ArrowDown','s','ArrowLeft','a','ArrowRight','d'].includes(e.key)) setDir(0,0);
     };
 
-    // Touch
-    bindTouch('btn-up', 0, -1);
-    bindTouch('btn-down', 0, 1);
-    bindTouch('btn-left', -1, 0);
-    bindTouch('btn-right', 1, 0);
+    bindTouch('btn-up',0,-1); bindTouch('btn-down',0,1);
+    bindTouch('btn-left',-1,0); bindTouch('btn-right',1,0);
 }
 
 function bindTouch(id, x, y) {
     const el = document.getElementById(id);
-    el.ontouchstart = (e) => { e.preventDefault(); state.input.x = x; state.input.y = y; };
-    el.ontouchend = (e) => { e.preventDefault(); if(state.input.x===x) state.input.x=0; if(state.input.y===y) state.input.y=0; };
+    el.ontouchstart = e => { e.preventDefault(); state.input.x=x; state.input.y=y; state.input.active=true; };
+    el.ontouchend = e => { e.preventDefault(); state.input.active=false; };
 }
 
-function log(msg) { console.log(msg); }
+function log(t) { document.getElementById('status-log').innerText = t; }
 
-// Arrancar
 window.onload = init;
 
 </script>
