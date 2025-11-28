@@ -2,451 +2,429 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>BomberNet Web Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BomberNet Engine</title>
     <style>
+        /* RESET BÁSICO */
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #1a1a1a;
+            margin: 0; padding: 0;
+            background-color: #000;
             color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden; /* Evitar scroll en móvil */
-            touch-action: none; /* Vital para controles táctiles */
+            font-family: monospace;
+            overflow: hidden; /* Sin barras de scroll */
+            touch-action: none; /* Desactivar zoom táctil */
+            height: 100vh; width: 100vw;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        /* --- UI DE MENÚ --- */
+        /* CONTENEDOR DEL JUEGO (Mantiene Aspect Ratio) */
+        #game-container {
+            position: relative;
+            background: #111;
+            box-shadow: 0 0 50px rgba(255, 159, 67, 0.2);
+            /* Tamaño inicial por si falla JS */
+            width: 480px; height: 352px; 
+        }
+
+        canvas {
+            display: block;
+            width: 100%; height: 100%;
+            image-rendering: pixelated; /* PIXEL ART NÍTIDO */
+        }
+
+        /* CAPA DE UI (MENÚ) */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(0, 0, 0, 0.85); z-index: 100;
+            background: rgba(0, 0, 0, 0.7); /* Semitransparente para ver el juego detrás */
+            z-index: 100;
         }
         
         .panel {
-            background: #2a2a2a; padding: 30px; border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center;
-            border: 1px solid #444;
+            background: #222; padding: 20px; border: 4px solid #fff;
+            box-shadow: 0 10px 0 #000; text-align: center;
         }
 
-        h1 { margin: 0 0 20px 0; color: #ff9f43; letter-spacing: 2px; }
-        
         input {
-            padding: 12px; font-size: 18px; border-radius: 5px; border: none;
-            background: #444; color: white; width: 200px; text-align: center;
-            margin-bottom: 15px; outline: none; text-transform: uppercase;
+            display: block; margin: 10px auto; padding: 10px; font-size: 16px; 
+            background: #000; color: #fff; border: 2px solid #555; text-align: center;
+            font-family: monospace; text-transform: uppercase;
         }
         
         button {
-            padding: 12px 30px; font-size: 18px; cursor: pointer;
-            background: #ff9f43; color: #222; border: none; border-radius: 5px;
-            font-weight: bold; transition: transform 0.1s; width: 100%;
+            padding: 10px 20px; font-size: 16px; cursor: pointer;
+            background: #ff9f43; color: #000; border: 2px solid #fff;
+            font-weight: bold; font-family: monospace; text-transform: uppercase;
         }
-        button:active { transform: scale(0.95); }
-        button:disabled { background: #555; cursor: not-allowed; transform: none; }
+        button:active { transform: translateY(4px); box-shadow: none; }
 
-        #status-log {
-            margin-top: 15px; font-size: 14px; color: #aaa; min-height: 20px;
-        }
-
-        /* --- JUEGO --- */
-        canvas {
-            display: block;
-            margin: 0 auto;
-            background: #2b3a42; /* Color del suelo */
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
-        }
-
-        /* --- CONTROLES MÓVIL --- */
+        /* CONTROLES TÁCTILES */
         #mobile-controls {
-            display: none; /* Se activa con JS si es táctil */
-            position: absolute; bottom: 20px; left: 20px;
-            width: 150px; height: 150px; z-index: 50;
+            display: none; position: absolute; bottom: 10px; left: 10px;
+            width: 140px; height: 140px; z-index: 50;
         }
         .d-pad-btn {
-            position: absolute; width: 50px; height: 50px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px; border: 2px solid rgba(255,255,255,0.4);
+            position: absolute; width: 40px; height: 40px;
+            background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 5px;
         }
         .d-pad-btn:active { background: rgba(255, 159, 67, 0.5); }
+        
         #btn-up { top: 0; left: 50px; }
         #btn-down { bottom: 0; left: 50px; }
         #btn-left { top: 50px; left: 0; }
         #btn-right { top: 50px; right: 0; }
 
         #action-btn {
-            display: none; position: absolute; bottom: 40px; right: 40px;
-            width: 80px; height: 80px; border-radius: 50%;
+            display: none; position: absolute; bottom: 20px; right: 20px;
+            width: 70px; height: 70px; border-radius: 50%;
             background: rgba(231, 76, 60, 0.4); border: 4px solid rgba(255,255,255,0.4);
+            z-index: 50;
         }
         #action-btn:active { background: rgba(231, 76, 60, 0.8); }
-
     </style>
 </head>
 <body>
 
-    <!-- MENÚ DE INICIO -->
-    <div id="ui-layer">
-        <div class="panel">
-            <h1>BOMBERNET</h1>
-            <input type="text" id="roomInput" placeholder="CÓDIGO SALA" value="TEST" maxlength="6">
-            <button id="btnPlay" onclick="startGame()">JUGAR</button>
-            <div id="status-log">Listo para conectar...</div>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- MENÚ PRINCIPAL -->
+        <div id="ui-layer">
+            <div class="panel">
+                <h1 style="color:#ff9f43; margin-bottom:5px;">BOMBER-NET</h1>
+                <div style="font-size:10px; color:#aaa; margin-bottom:15px;">HTML5 ENGINE v0.2</div>
+                
+                <input type="text" id="roomInput" placeholder="SALA (EJ: TEST)" value="TEST" maxlength="6">
+                <button id="btnPlay" onclick="startGame()">CONECTAR</button>
+                <div id="status-log" style="margin-top:10px; font-size:10px; color:#4cd137;">ONLINE</div>
+            </div>
         </div>
-    </div>
 
-    <!-- CANVAS DEL JUEGO -->
-    <canvas id="gameCanvas"></canvas>
-
-    <!-- CONTROLES TÁCTILES -->
-    <div id="mobile-controls">
-        <div id="btn-up" class="d-pad-btn"></div>
-        <div id="btn-down" class="d-pad-btn"></div>
-        <div id="btn-left" class="d-pad-btn"></div>
-        <div id="btn-right" class="d-pad-btn"></div>
+        <!-- TOUCH CONTROLS -->
+        <div id="mobile-controls">
+            <div id="btn-up" class="d-pad-btn"></div>
+            <div id="btn-down" class="d-pad-btn"></div>
+            <div id="btn-left" class="d-pad-btn"></div>
+            <div id="btn-right" class="d-pad-btn"></div>
+        </div>
+        <div id="action-btn"></div>
     </div>
-    <div id="action-btn"></div>
 
 <script>
-/**
- * ==========================================
- * MÓDULO DE RED (NETWORK MANAGER)
- * Encapsula toda la complejidad de WebRTC
- * ==========================================
+/** * CONFIGURACIÓN DEL MOTOR
  */
-class NetworkManager {
-    constructor(signalingUrl, iceServers) {
-        this.url = signalingUrl;
-        this.iceServers = iceServers;
+const CONFIG = {
+    RES_W: 480,  // Ancho lógico (15 celdas * 32px)
+    RES_H: 352,  // Alto lógico (11 celdas * 32px)
+    TILE: 32,    // Tamaño de celda
+    FPS: 60
+};
+
+// --- ESTADO DEL JUEGO ---
+const state = {
+    running: false,
+    connected: false,
+    input: { x:0, y:0, action:false },
+    localPlayer: null,
+    remotePlayer: null
+};
+
+// --- RED (NETWORK) ---
+class Net {
+    constructor() {
         this.ws = null;
-        this.rtcPeer = null;
-        this.dataChannel = null;
-        this.myId = 0;
-        
-        // Event Hooks (Callbacks)
-        this.onConnect = (id) => {}; // Cuando conectamos al server
-        this.onPeerJoin = () => {};  // Cuando entra alguien
-        this.onPeerLeft = () => {};  // Cuando sale
-        this.onData = (data) => {};  // Cuando recibimos datos de juego
-        this.onLog = (msg) => console.log(`[NET] ${msg}`);
+        this.rtc = null;
+        this.channel = null;
+        this.id = 0;
     }
 
     connect(room) {
-        this.onLog("Conectando WS...");
-        this.ws = new WebSocket(this.url);
+        log("Conectando WS...");
+        this.ws = new WebSocket('wss://bomber-server.onrender.com');
+        this.ws.onopen = () => this.ws.send(JSON.stringify({ type:'join', room:room }));
+        this.ws.onmessage = (e) => this.handleSig(JSON.parse(e.data));
+    }
+
+    async handleSig(msg) {
+        switch(msg.type) {
+            case 'id': 
+                this.id = msg.id; 
+                onConnected(msg.id); 
+                break;
+            case 'peer_connected': 
+                this.initRTC(true); 
+                break;
+            case 'offer': 
+                if(!this.rtc) this.initRTC(false);
+                await this.rtc.setRemoteDescription(msg.sdp);
+                // Breve pausa para estabilidad
+                setTimeout(async () => {
+                    const ans = await this.rtc.createAnswer();
+                    await this.rtc.setLocalDescription(ans);
+                    this.sendSig({ type:'answer', sdp:ans });
+                }, 100);
+                break;
+            case 'answer': 
+                await this.rtc.setRemoteDescription(msg.sdp); 
+                break;
+            case 'candidate': 
+                if(this.rtc) await this.rtc.addIceCandidate(msg.candidate); 
+                break;
+        }
+    }
+
+    sendSig(data) { if(this.ws) this.ws.send(JSON.stringify(data)); }
+
+    initRTC(isOfferer) {
+        log("Iniciando WebRTC...");
+        this.rtc = new RTCPeerConnection({ iceServers:[{urls:'stun:stun.l.google.com:19302'}] });
         
-        this.ws.onopen = () => {
-            this.sendSignaling({ type: 'join', room: room });
+        this.rtc.onicecandidate = e => { if(e.candidate) this.sendSig({type:'candidate', candidate:e.candidate}); };
+        this.rtc.onconnectionstatechange = () => {
+            if(this.rtc.connectionState === 'connected') onPeerJoin();
         };
 
-        this.ws.onmessage = (e) => this.handleSignaling(JSON.parse(e.data));
-        this.ws.onerror = (e) => this.onLog("Error WS");
-    }
-
-    sendSignaling(data) {
-        if(this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify(data));
-        }
-    }
-
-    async handleSignaling(data) {
-        switch (data.type) {
-            case 'id':
-                this.myId = data.id;
-                this.onConnect(this.myId);
-                break;
-            case 'peer_connected':
-                this.initWebRTC(true); // Soy Host, inicio llamada
-                break;
-            case 'offer':
-                if(!this.rtcPeer) this.initWebRTC(false);
-                await this.rtcPeer.setRemoteDescription(data.sdp);
-                const answer = await this.rtcPeer.createAnswer();
-                await this.rtcPeer.setLocalDescription(answer);
-                this.sendSignaling({ type: 'answer', sdp: answer });
-                break;
-            case 'answer':
-                await this.rtcPeer.setRemoteDescription(data.sdp);
-                break;
-            case 'candidate':
-                if(this.rtcPeer) await this.rtcPeer.addIceCandidate(data.candidate);
-                break;
-            case 'peer_disconnected':
-                if(this.rtcPeer) this.rtcPeer.close();
-                this.rtcPeer = null;
-                this.onPeerLeft();
-                break;
-        }
-    }
-
-    initWebRTC(isInitiator) {
-        this.rtcPeer = new RTCPeerConnection({ iceServers: this.iceServers });
-
-        this.rtcPeer.onicecandidate = (e) => {
-            if (e.candidate) this.sendSignaling({ type: 'candidate', candidate: e.candidate });
-        };
-
-        this.rtcPeer.onconnectionstatechange = () => {
-            if(this.rtcPeer.connectionState === 'connected') {
-                this.onPeerJoin();
-            }
-        };
-
-        if (isInitiator) {
-            this.dataChannel = this.rtcPeer.createDataChannel("game", { ordered: false, maxRetransmits: 0 }); // UDP-like
-            this.setupDataChannel();
-            this.rtcPeer.createOffer().then(offer => {
-                this.rtcPeer.setLocalDescription(offer);
-                this.sendSignaling({ type: 'offer', sdp: offer });
-            });
+        if(isOfferer) {
+            this.channel = this.rtc.createDataChannel("game", {ordered:false, maxRetransmits:0});
+            this.setupChannel();
+            this.rtc.createOffer().then(o => { this.rtc.setLocalDescription(o); this.sendSig({type:'offer', sdp:o}); });
         } else {
-            this.rtcPeer.ondatachannel = (e) => {
-                this.dataChannel = e.channel;
-                this.setupDataChannel();
-            };
+            this.rtc.ondatachannel = e => { this.channel = e.channel; this.setupChannel(); };
         }
     }
 
-    setupDataChannel() {
-        this.dataChannel.onmessage = (e) => {
-            const msg = JSON.parse(e.data);
-            this.onData(msg);
-        };
+    setupChannel() {
+        this.channel.onmessage = e => onNetData(JSON.parse(e.data));
+        this.channel.onopen = () => log("¡CANAL P2P ABIERTO!");
     }
 
     send(data) {
-        if(this.dataChannel && this.dataChannel.readyState === 'open') {
-            this.dataChannel.send(JSON.stringify(data));
-        }
+        if(this.channel && this.channel.readyState==='open') this.channel.send(JSON.stringify(data));
     }
 }
 
-/**
- * ==========================================
- * LÓGICA DEL JUEGO (GAME ENGINE)
- * ==========================================
- */
-
-const CONSTANTS = {
-    GRID_SIZE: 40,
-    SPEED: 4,
-    PLAYER_SIZE: 30
-};
-
-// Objeto Jugador
+// --- CLASES DE JUEGO ---
 class Player {
-    constructor(id, color, x, y) {
+    constructor(id, x, y, color) {
         this.id = id;
+        this.x = x; this.y = y;
+        this.tx = x; this.ty = y; // Target (para interpolación)
         this.color = color;
-        this.x = x;
-        this.y = y;
-        this.targetX = x; // Para interpolación
-        this.targetY = y;
-        this.name = `P${id}`;
+        this.w = 24; this.h = 24; // Un poco más pequeño que el tile (32)
+    }
+
+    update() {
+        // Interpolación suave hacia el objetivo
+        this.x += (this.tx - this.x) * 0.2;
+        this.y += (this.ty - this.y) * 0.2;
     }
 
     draw(ctx) {
-        // Dibujar cuerpo (Interpolamos visualmente entre x y targetX)
-        // Lerp simple: movemos un 20% hacia el objetivo cada frame
-        this.x += (this.targetX - this.x) * 0.2; 
-        this.y += (this.targetY - this.y) * 0.2;
+        // Dibujar centrado en el tile
+        // Las coordenadas x,y son top-left del tile lógico
+        const cx = this.x + (CONFIG.TILE - this.w)/2;
+        const cy = this.y + (CONFIG.TILE - this.h)/2;
 
-        // Sombra
-        ctx.fillStyle = "rgba(0,0,0,0.3)";
-        ctx.beginPath();
-        ctx.arc(this.x + CONSTANTS.PLAYER_SIZE/2, this.y + CONSTANTS.PLAYER_SIZE - 5, 10, 0, Math.PI*2);
-        ctx.fill();
-
-        // Cuadrado (Cuerpo)
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, CONSTANTS.PLAYER_SIZE, CONSTANTS.PLAYER_SIZE);
+        ctx.fillRect(cx, cy, this.w, this.h);
         
-        // Borde
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(this.x, this.y, CONSTANTS.PLAYER_SIZE, CONSTANTS.PLAYER_SIZE);
-
-        // Nombre
+        // Ojos
         ctx.fillStyle = "white";
-        ctx.font = "12px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(this.name, this.x + CONSTANTS.PLAYER_SIZE/2, this.y - 8);
+        ctx.fillRect(cx+4, cy+4, 6, 6);
+        ctx.fillRect(cx+14, cy+4, 6, 6);
     }
 }
 
-// Variables Globales del Juego
-let canvas, ctx;
-let net;
-let localPlayer = null;
-let remotePlayer = null;
-let isGameRunning = false;
-let inputState = { up: false, down: false, left: false, right: false };
+// --- MOTOR GRÁFICO ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const net = new Net();
 
-// --- INICIALIZACIÓN ---
-window.onload = () => {
-    canvas = document.getElementById('gameCanvas');
-    ctx = canvas.getContext('2d');
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+function init() {
+    // Configurar Canvas
+    ctx.imageSmoothingEnabled = false;
+    resize();
+    window.addEventListener('resize', resize);
     
-    // Configurar Red
-    net = new NetworkManager(
-        'wss://bomber-server.onrender.com', 
-        [{ urls: 'stun:stun.l.google.com:19302' }]
-    );
-
-    net.onConnect = (id) => {
-        document.getElementById('status-log').innerText = `Conectado. Eres Jugador ${id}`;
-        document.getElementById('status-log').style.color = "#4cd137";
-        
-        // Iniciar partida
-        initGame(id);
-    };
-
-    net.onPeerJoin = () => {
-        console.log("¡Rival entró!");
-        // Crear al rival en la posición opuesta
-        const rivalId = localPlayer.id === 1 ? 2 : 1;
-        remotePlayer = new Player(rivalId, rivalId === 1 ? '#3498db' : '#e74c3c', 0, 0); 
-        // Reset position based on ID
-        if(rivalId === 1) { remotePlayer.targetX = 40; remotePlayer.targetY = 40; }
-        else { remotePlayer.targetX = canvas.width - 80; remotePlayer.targetY = canvas.height - 80; }
-    };
-
-    net.onData = (data) => {
-        if(remotePlayer && data.t === 'm') {
-            // Actualizar objetivo del rival (Interpolación)
-            remotePlayer.targetX = data.x;
-            remotePlayer.targetY = data.y;
-        }
-    };
-
+    // Inputs
     setupInputs();
-};
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Arrancar Loop INMEDIATAMENTE para ver el grid
+    requestAnimationFrame(loop);
 }
 
+function resize() {
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    const scale = Math.min(winW / CONFIG.RES_W, winH / CONFIG.RES_H);
+    
+    const cont = document.getElementById('game-container');
+    cont.style.width = (CONFIG.RES_W * scale) + 'px';
+    cont.style.height = (CONFIG.RES_H * scale) + 'px';
+    
+    // Canvas interno siempre tiene resolución lógica fija
+    canvas.width = CONFIG.RES_W;
+    canvas.height = CONFIG.RES_H;
+    ctx.imageSmoothingEnabled = false; // Reaplicar al redimensionar
+}
+
+// --- LOGICA DE JUEGO ---
 function startGame() {
     const room = document.getElementById('roomInput').value;
     if(!room) return;
-    
     document.getElementById('btnPlay').disabled = true;
-    document.getElementById('status-log').innerText = "Conectando al servidor...";
-    
+    document.getElementById('btnPlay').innerText = "CONECTANDO...";
     net.connect(room.toUpperCase());
 }
 
-function initGame(myId) {
+function onConnected(myId) {
     document.getElementById('ui-layer').style.display = 'none';
+    state.connected = true;
     
-    // Detectar si es móvil para mostrar controles
+    // Spawn propio
+    const color = myId===1 ? '#3498db' : '#e74c3c';
+    // Posición inicial: 1,1 o Esquina opuesta
+    const sx = myId===1 ? CONFIG.TILE : CONFIG.RES_W - CONFIG.TILE*2;
+    const sy = myId===1 ? CONFIG.TILE : CONFIG.RES_H - CONFIG.TILE*2;
+    
+    state.localPlayer = new Player(myId, sx, sy, color);
+    
+    // Activar controles táctiles si es móvil
     if('ontouchstart' in window) {
         document.getElementById('mobile-controls').style.display = 'block';
         document.getElementById('action-btn').style.display = 'block';
     }
-
-    // Crear mi jugador
-    const color = myId === 1 ? '#3498db' : '#e74c3c'; // Azul P1, Rojo P2
-    let startX = myId === 1 ? 40 : canvas.width - 80;
-    let startY = myId === 1 ? 40 : canvas.height - 80;
-    
-    localPlayer = new Player(myId, color, startX, startY);
-    
-    isGameRunning = true;
-    requestAnimationFrame(gameLoop);
 }
 
-// --- BUCLE PRINCIPAL (60 FPS) ---
-function gameLoop() {
-    if(!isGameRunning) return;
+function onPeerJoin() {
+    log("¡RIVAL ENTRÓ!");
+    const rivalId = state.localPlayer.id === 1 ? 2 : 1;
+    const color = rivalId===1 ? '#3498db' : '#e74c3c';
+    const sx = rivalId===1 ? CONFIG.TILE : CONFIG.RES_W - CONFIG.TILE*2;
+    const sy = rivalId===1 ? CONFIG.TILE : CONFIG.RES_H - CONFIG.TILE*2;
+    
+    state.remotePlayer = new Player(rivalId, sx, sy, color);
+}
 
+function onNetData(data) {
+    if(state.remotePlayer && data.t === 'm') {
+        state.remotePlayer.tx = data.x;
+        state.remotePlayer.ty = data.y;
+    }
+}
+
+// --- BUCLE PRINCIPAL ---
+function loop() {
     update();
     draw();
-    requestAnimationFrame(gameLoop);
+    requestAnimationFrame(loop);
 }
 
 function update() {
-    if(!localPlayer) return;
+    if(!state.localPlayer) return;
 
-    // 1. Movimiento Local
-    let dx = 0;
-    let dy = 0;
-    if(inputState.up) dy -= CONSTANTS.SPEED;
-    if(inputState.down) dy += CONSTANTS.SPEED;
-    if(inputState.left) dx -= CONSTANTS.SPEED;
-    if(inputState.right) dx += CONSTANTS.SPEED;
+    // Movimiento Local
+    const SPEED = 2.5;
+    let dx=0, dy=0;
+    
+    if(state.input.y < 0) dy = -SPEED;
+    if(state.input.y > 0) dy = SPEED;
+    if(state.input.x < 0) dx = -SPEED;
+    if(state.input.x > 0) dx = SPEED;
 
-    // Normalizar diagonales
-    if(dx !== 0 && dy !== 0) {
-        dx *= 0.707;
-        dy *= 0.707;
+    const p = state.localPlayer;
+    let nx = p.tx + dx;
+    let ny = p.ty + dy;
+
+    // Colisiones Bordes Mapa
+    if(nx < CONFIG.TILE) nx = CONFIG.TILE;
+    if(ny < CONFIG.TILE) ny = CONFIG.TILE;
+    if(nx > CONFIG.RES_W - CONFIG.TILE*2) nx = CONFIG.RES_W - CONFIG.TILE*2;
+    if(ny > CONFIG.RES_H - CONFIG.TILE*2) ny = CONFIG.RES_H - CONFIG.TILE*2;
+
+    p.tx = nx;
+    p.ty = ny;
+    p.update(); // Interpolar localmente también para suavidad visual
+
+    // Enviar Red (Solo si me muevo)
+    if(dx!==0 || dy!==0) {
+        net.send({ t:'m', x:p.tx, y:p.ty });
     }
 
-    localPlayer.targetX += dx;
-    localPlayer.targetY += dy;
-
-    // Colisiones con bordes
-    if(localPlayer.targetX < 0) localPlayer.targetX = 0;
-    if(localPlayer.targetY < 0) localPlayer.targetY = 0;
-    if(localPlayer.targetX > canvas.width - CONSTANTS.PLAYER_SIZE) localPlayer.targetX = canvas.width - CONSTANTS.PLAYER_SIZE;
-    if(localPlayer.targetY > canvas.height - CONSTANTS.PLAYER_SIZE) localPlayer.targetY = canvas.height - CONSTANTS.PLAYER_SIZE;
-
-    // Para el jugador local, la posición real es inmediata (sin lag percibido)
-    localPlayer.x = localPlayer.targetX;
-    localPlayer.y = localPlayer.targetY;
-
-    // 2. Enviar Red (Si nos hemos movido)
-    if(dx !== 0 || dy !== 0) {
-        net.send({ t: 'm', x: localPlayer.x, y: localPlayer.y });
-    }
+    if(state.remotePlayer) state.remotePlayer.update();
 }
 
 function draw() {
-    // Limpiar pantalla
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 1. Fondo
+    ctx.fillStyle = "#2b3a42";
+    ctx.fillRect(0,0, canvas.width, canvas.height);
 
-    // Dibujar Rejilla (Suelo)
-    ctx.strokeStyle = "rgba(255,255,255,0.05)";
-    ctx.lineWidth = 1;
-    for(let x=0; x<canvas.width; x+=CONSTANTS.GRID_SIZE) {
-        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
-    }
-    for(let y=0; y<canvas.height; y+=CONSTANTS.GRID_SIZE) {
-        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+    // 2. Grid (Suelo)
+    const T = CONFIG.TILE;
+    for(let y=0; y<CONFIG.RES_H; y+=T) {
+        for(let x=0; x<CONFIG.RES_W; x+=T) {
+            // Bordes Fijos (Pared Indestructible)
+            if(x===0 || y===0 || x>=CONFIG.RES_W-T || y>=CONFIG.RES_H-T) {
+                ctx.fillStyle = "#535c68"; // Pared Gris
+                ctx.fillRect(x,y,T,T);
+                drawPixelBorder(x,y,T, "#2c3e50");
+            } else if ((x/T)%2===0 && (y/T)%2===0) {
+                // Pilares internos
+                ctx.fillStyle = "#535c68";
+                ctx.fillRect(x,y,T,T);
+                drawPixelBorder(x,y,T, "#2c3e50");
+            } else {
+                // Suelo Caminable
+                ctx.strokeStyle = "rgba(255,255,255,0.03)";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x,y,T,T);
+            }
+        }
     }
 
-    // Dibujar Jugadores
-    if(remotePlayer) remotePlayer.draw(ctx);
-    if(localPlayer) localPlayer.draw(ctx);
+    // 3. Jugadores
+    if(state.remotePlayer) state.remotePlayer.draw(ctx);
+    if(state.localPlayer) state.localPlayer.draw(ctx);
 }
 
-// --- INPUTS (Teclado + Touch) ---
+function drawPixelBorder(x, y, s, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y+s-4, s, 4); // Sombra abajo
+    ctx.fillRect(x+s-4, y, 4, s); // Sombra derecha
+}
+
+// --- INPUTS ---
 function setupInputs() {
     // Teclado
-    window.addEventListener('keydown', (e) => setKey(e.key, true));
-    window.addEventListener('keyup', (e) => setKey(e.key, false));
+    window.onkeydown = e => {
+        if(e.key==='ArrowUp' || e.key==='w') state.input.y = -1;
+        if(e.key==='ArrowDown' || e.key==='s') state.input.y = 1;
+        if(e.key==='ArrowLeft' || e.key==='a') state.input.x = -1;
+        if(e.key==='ArrowRight' || e.key==='d') state.input.x = 1;
+    };
+    window.onkeyup = e => {
+        if(['ArrowUp','w','ArrowDown','s'].includes(e.key)) state.input.y = 0;
+        if(['ArrowLeft','a','ArrowRight','d'].includes(e.key)) state.input.x = 0;
+    };
 
-    // Touch D-PAD
-    bindTouch('btn-up', 'up');
-    bindTouch('btn-down', 'down');
-    bindTouch('btn-left', 'left');
-    bindTouch('btn-right', 'right');
+    // Touch
+    bindTouch('btn-up', 0, -1);
+    bindTouch('btn-down', 0, 1);
+    bindTouch('btn-left', -1, 0);
+    bindTouch('btn-right', 1, 0);
 }
 
-function setKey(key, state) {
-    if(key === 'ArrowUp' || key === 'w') inputState.up = state;
-    if(key === 'ArrowDown' || key === 's') inputState.down = state;
-    if(key === 'ArrowLeft' || key === 'a') inputState.left = state;
-    if(key === 'ArrowRight' || key === 'd') inputState.right = state;
+function bindTouch(id, x, y) {
+    const el = document.getElementById(id);
+    el.ontouchstart = (e) => { e.preventDefault(); state.input.x = x; state.input.y = y; };
+    el.ontouchend = (e) => { e.preventDefault(); if(state.input.x===x) state.input.x=0; if(state.input.y===y) state.input.y=0; };
 }
 
-function bindTouch(id, action) {
-    const btn = document.getElementById(id);
-    btn.addEventListener('touchstart', (e) => { e.preventDefault(); inputState[action] = true; });
-    btn.addEventListener('touchend', (e) => { e.preventDefault(); inputState[action] = false; });
-}
+function log(msg) { console.log(msg); }
+
+// Arrancar
+window.onload = init;
 
 </script>
 </body>
