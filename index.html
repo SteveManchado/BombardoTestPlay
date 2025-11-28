@@ -3,33 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bombardo Engine v1.3</title>
+    <title>BomberNet Engine v1.4 (4 Players & UI Fix)</title>
     <style>
-        /* --- LAYOUT PRINCIPAL --- */
+        /* --- LAYOUT PRINCIPAL (Flex Column) --- */
         body {
             margin: 0; padding: 0;
             background-color: #111;
             height: 100vh; width: 100vw;
             display: flex; 
-            flex-direction: column; /* Vertical: Juego Arriba, Controles Abajo */
+            flex-direction: column; /* Apilar verticalmente */
             align-items: center; 
-            justify-content: center;
+            justify-content: center; /* Centrar si sobra espacio */
             overflow: hidden; 
             touch-action: none; 
             font-family: 'Courier New', monospace;
         }
 
-        /* PANTALLA DE JUEGO */
+        /* PANTALLA DE JUEGO (Arriba) */
         #game-viewport {
             position: relative;
             background: #000;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
             image-rendering: pixelated;
-            flex-grow: 1; /* Ocupa el espacio disponible */
+            /* Flex para ocupar espacio disponible pero respetar aspect ratio */
+            flex-grow: 1; 
             max-width: 100%;
+            max-height: 100%; /* No crecer más de la pantalla */
+            display: flex; 
+            justify-content: center;
+            align-items: center;
         }
 
-        canvas { display: block; margin: 0 auto; }
+        canvas { 
+            display: block; 
+            /* El canvas se ajustará por JS manteniendo aspect ratio */
+        }
         
         /* UI INTERNA (Menú) */
         #ui-layer {
@@ -45,24 +53,35 @@
         button:disabled { background: #555; color: #888; border-color: #555; cursor: wait; }
         #status-log { font-size: 10px; color: #aaa; margin-top: 10px; }
 
-        /* HUD */
-        #hud { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; pointer-events: none; z-index: 10; }
-        .score-box { background: rgba(0,0,0,0.5); padding: 5px 10px; color: white; font-weight: bold; border: 2px solid rgba(255,255,255,0.3); font-size: 12px; text-shadow: 1px 1px 0 #000; }
-        #p1-score { color: #3498db; } #p2-score { color: #e74c3c; }
+        /* HUD (Puntuación 4 Jugadores) */
+        #hud { 
+            position: absolute; top: 0; left: 0; width: 100%; 
+            display: flex; flex-wrap: wrap; justify-content: space-around; 
+            padding: 5px; box-sizing: border-box; pointer-events: none; z-index: 10; 
+        }
+        .score-box { 
+            background: rgba(0,0,0,0.6); padding: 2px 6px; color: white; 
+            font-weight: bold; border: 1px solid rgba(255,255,255,0.3); 
+            font-size: 10px; text-shadow: 1px 1px 0 #000; margin: 2px;
+        }
+        #p1-score { color: #3498db; } /* Azul */
+        #p2-score { color: #e74c3c; } /* Rojo */
+        #p3-score { color: #2ecc71; } /* Verde */
+        #p4-score { color: #f1c40f; } /* Amarillo */
 
-        /* --- CONTROLES GAMEPAD (Inferior) --- */
+        /* --- CONTROLES GAMEPAD (Inferior - Fuera del juego) --- */
         #gamepad-area {
             display: none; /* JS lo activa en móvil */
             width: 100%;
-            height: 200px; /* Altura fija cómoda para pulgares */
+            height: 180px; /* Altura fija cómoda */
             background: #1a1a1a;
             border-top: 2px solid #444;
             flex-direction: row;
-            justify-content: space-between; /* Separar D-PAD y Botón */
+            justify-content: space-between; /* D-PAD izq, Botón der */
             align-items: center;
-            padding: 0 20px;
+            padding: 10px 20px; /* Padding lateral */
             box-sizing: border-box;
-            flex-shrink: 0;
+            flex-shrink: 0; /* No encogerse */
         }
 
         /* Estilos base de los botones */
@@ -73,58 +92,47 @@
             image-rendering: pixelated;
             touch-action: none;
             opacity: 0.8;
-            /* Eliminamos el tap highlight azul en Android */
             -webkit-tap-highlight-color: transparent; 
         }
         .gp-btn:active { opacity: 1.0; transform: scale(0.95); }
 
         /* === D-PAD === */
         .d-pad {
-            position: relative; width: 180px; height: 180px;
-            /* background: rgba(255,0,0,0.1); Debug Area */
+            position: relative; width: 150px; height: 150px;
+            /* background: rgba(255,0,0,0.1); Debug */
         }
         
-        /* Flechas (C4 = 64, 96)
-           Escala 2x -> Botones de 64px. 
-           SpriteSheet Original: 224x128.
-           SpriteSheet Escalado 2x: 448x256.
-           Posición Escalada: x=128, y=192 -> background-position: -128px -192px.
-        */
+        /* Flechas (C4 = 64, 96) -> Escala 2x */
         .arrow-btn {
             width: 64px; height: 64px;
-            background-size: 448px 256px; /* 2x Scale */
+            background-size: 448px 256px; 
             background-position: -128px -192px; 
         }
 
-        /* Distribución en Cruz (Matriz 3x3 virtual de 60px) */
-        #btn-up    { left: 58px; top: 0; }
-        #btn-down  { left: 58px; bottom: 0; transform: rotate(180deg); }
-        #btn-left  { left: 0; top: 58px; transform: rotate(-90deg); }
-        #btn-right { right: 0; top: 58px; transform: rotate(90deg); }
+        #btn-up    { left: 43px; top: 0; }
+        #btn-down  { left: 43px; bottom: 0; transform: rotate(180deg); }
+        #btn-left  { left: 0; top: 43px; transform: rotate(-90deg); }
+        #btn-right { right: 0; top: 43px; transform: rotate(90deg); }
 
-        /* Ajustes de rotación al presionar (para mantener el centro) */
         #btn-down:active  { transform: rotate(180deg) scale(0.9); }
         #btn-left:active  { transform: rotate(-90deg) scale(0.9); }
         #btn-right:active { transform: rotate(90deg) scale(0.9); }
 
-
         /* === BOTÓN BOMBA (C2) === */
-        /* C2 = 64, 32.
-           Escala 2.5x -> Botón de 80px.
-           SpriteSheet Escalado 2.5x: 560x320.
-           Posición Escalada: x=160, y=80 -> background-position: -160px -80px.
-        */
+        /* C2 = 64, 32 -> Escala 2.5x */
+        #action-wrapper {
+            position: relative; width: 90px; height: 90px; display: flex; justify-content: center; align-items: center;
+        }
         #action-btn {
-            position: relative; /* Relativo al flex container derecho */
+            position: relative; 
             width: 80px; height: 80px;
-            background-size: 560px 320px; /* 2.5x Scale */
+            background-size: 560px 320px; 
             background-position: -160px -80px;
             
-            background-color: #c0392b; /* Fondo rojo */
+            background-color: #c0392b; 
             border-radius: 50%;
             border: 4px solid rgba(255,255,255,0.2);
             box-shadow: 0 6px 0 #000;
-            margin-right: 20px;
         }
         #action-btn:active { 
             box-shadow: 0 3px 0 #000; 
@@ -135,20 +143,22 @@
 </head>
 <body>
 
-    <!-- VIEWPORT DEL JUEGO -->
+    <!-- VIEWPORT DEL JUEGO (Arriba) -->
     <div id="game-viewport">
         <canvas id="gameCanvas"></canvas>
         
-        <!-- UI SUPERPUESTA -->
+        <!-- HUD (Puntuación 4P) -->
         <div id="hud" style="display:none;">
             <div id="p1-score" class="score-box">P1: 0</div>
             <div id="p2-score" class="score-box">P2: 0</div>
+            <div id="p3-score" class="score-box" style="display:none;">P3: 0</div>
+            <div id="p4-score" class="score-box" style="display:none;">P4: 0</div>
         </div>
 
         <div id="ui-layer">
             <div class="panel">
-                <h1>Bombardo</h1>
-                <div style="font-size:10px; margin-bottom:10px;">v1.3</div>
+                <h1>BomberNet</h1>
+                <div style="font-size:10px; margin-bottom:10px;">v1.4 - 4 PLAYERS</div>
                 <input type="text" id="roomInput" placeholder="CÓDIGO SALA" value="TEST" maxlength="6">
                 <button id="btnPlay" onclick="startGame()">JUGAR</button>
                 <div id="status-log">OFFLINE</div>
@@ -156,18 +166,17 @@
         </div>
     </div>
 
-    <!-- ZONA DE CONTROLES (FUERA DEL JUEGO) -->
+    <!-- ZONA DE CONTROLES (Abajo - Fuera del Canvas) -->
     <div id="gamepad-area">
-        <!-- D-PAD Izquierda -->
         <div class="d-pad">
             <div id="btn-up" class="gp-btn arrow-btn"></div>
             <div id="btn-down" class="gp-btn arrow-btn"></div>
             <div id="btn-left" class="gp-btn arrow-btn"></div>
             <div id="btn-right" class="gp-btn arrow-btn"></div>
         </div>
-
-        <!-- BOTÓN ACCIÓN Derecha -->
-        <div id="action-btn" class="gp-btn"></div>
+        <div id="action-wrapper">
+            <div id="action-btn" class="gp-btn"></div>
+        </div>
     </div>
 
 <script>
@@ -181,21 +190,14 @@ const CONFIG = {
 
 // --- ATLAS DE SPRITES ---
 const SPRITES = {
-    WALL_SOLID: {x:0, y:0},  
-    WALL_BRICK: {x:1, y:0},  
-    FLOOR:      {x:0, y:1}, 
-    BOMB_IDLE:  [{x:0, y:2}, {x:1, y:2}], 
-    EXPLOSION_CENTER: {x:2, y:2},
-    EXPLOSION_MID:    {x:0, y:3}, 
-    EXPLOSION_END:    {x:1, y:3}, 
+    WALL_SOLID: {x:0, y:0}, WALL_BRICK: {x:1, y:0}, FLOOR: {x:0, y:1}, 
+    BOMB_IDLE: [{x:0, y:2}, {x:1, y:2}], 
+    EXPLOSION_CENTER: {x:2, y:2}, EXPLOSION_MID: {x:0, y:3}, EXPLOSION_END: {x:1, y:3}, 
     CHAR: {
-        IDLE_DOWN:  [{x:3, y:0}],                   
-        WALK_DOWN:  [{x:4, y:0}, {x:3, y:0}, {x:5, y:0}, {x:3, y:0}], 
-        IDLE_SIDE:  [{x:6, y:0}],                   
-        WALK_SIDE:  [{x:3, y:1}, {x:4, y:1}, {x:5, y:1}, {x:6, y:1}], 
-        IDLE_UP:    [{x:3, y:2}],                   
-        WALK_UP:    [{x:4, y:2}, {x:3, y:2}, {x:5, y:2}, {x:3, y:2}], 
-        DIE:        [{x:6, y:2}, {x:3, y:3}, {x:4, y:3}, {x:5, y:3}]  
+        IDLE_DOWN: [{x:3, y:0}], WALK_DOWN: [{x:4, y:0}, {x:3, y:0}, {x:5, y:0}, {x:3, y:0}], 
+        IDLE_SIDE: [{x:6, y:0}], WALK_SIDE: [{x:3, y:1}, {x:4, y:1}, {x:5, y:1}, {x:6, y:1}], 
+        IDLE_UP: [{x:3, y:2}], WALK_UP: [{x:4, y:2}, {x:3, y:2}, {x:5, y:2}, {x:3, y:2}], 
+        DIE: [{x:6, y:2}, {x:3, y:3}, {x:4, y:3}, {x:5, y:3}]  
     }
 };
 
@@ -213,15 +215,20 @@ const state = {
     running: false,
     input: { x: 0, y: 0, active: false },
     localPlayer: null,
-    remotePlayer: null,
+    players: {}, // Mapa de jugadores remotos { id: Player }
     frame: 0,
-    scores: { 1: 0, 2: 0 },
+    scores: { 1:0, 2:0, 3:0, 4:0 },
     processingDeath: false
 };
 
-// --- RED ---
+// --- RED (Soporte Multi-Peer) ---
 class Net {
-    constructor() { this.ws=null; this.rtc=null; this.ch=null; this.id=0; }
+    constructor() { 
+        this.ws=null; 
+        this.id=0;
+        this.peers = {}; // { id: { rtc, ch } }
+    }
+    
     connect(room) {
         log("Conectando...");
         this.ws = new WebSocket('wss://bomber-server.onrender.com');
@@ -229,40 +236,90 @@ class Net {
         this.ws.onmessage = e => this.handle(JSON.parse(e.data));
         this.ws.onerror = () => log("Error WS");
     }
+
     async handle(m) {
         switch(m.type) {
-            case 'id': this.id=m.id; onConnected(m.id); break;
-            case 'peer_connected': this.initRTC(true); break;
+            case 'id': 
+                this.id=m.id; 
+                onConnected(m.id); 
+                break;
+            case 'peer_connected': 
+                // Nuevo peer (m.id) se unió. Yo (Host o veterano) inicio conexión hacia él.
+                // Nota: En una malla completa, idealmente el ID menor inicia, o el server orquesta.
+                // Asumiremos que el server avisa a los existentes que conecten al nuevo.
+                log(`Peer ${m.id} entró.`);
+                this.initRTC(m.id, true); 
+                break;
             case 'offer': 
-                if(!this.rtc) this.initRTC(false);
-                await this.rtc.setRemoteDescription(m.sdp);
+                if(!this.peers[m.origin]) this.initRTC(m.origin, false);
+                await this.peers[m.origin].rtc.setRemoteDescription(m.sdp);
                 setTimeout(async()=>{
-                    const a=await this.rtc.createAnswer();
-                    await this.rtc.setLocalDescription(a);
-                    this.sig({type:'answer', sdp:a});
+                    const a=await this.peers[m.origin].rtc.createAnswer();
+                    await this.peers[m.origin].rtc.setLocalDescription(a);
+                    this.sig({type:'answer', sdp:a, target:m.origin});
                 }, 500);
                 break;
-            case 'answer': await this.rtc.setRemoteDescription(m.sdp); break;
-            case 'candidate': if(this.rtc) await this.rtc.addIceCandidate(m.candidate); break;
+            case 'answer': 
+                if(this.peers[m.origin]) await this.peers[m.origin].rtc.setRemoteDescription(m.sdp); 
+                break;
+            case 'candidate': 
+                if(this.peers[m.origin]) await this.peers[m.origin].rtc.addIceCandidate(m.candidate); 
+                break;
+            case 'peer_disconnected':
+                // TODO: Server debería enviar ID de quién se fue
+                // Por ahora limpiaremos si falla el canal
+                break;
         }
     }
-    sig(d) { if(this.ws) this.ws.send(JSON.stringify(d)); }
-    initRTC(offerer) {
-        this.rtc = new RTCPeerConnection({iceServers:[
-            {urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'}
-        ]});
-        this.rtc.onicecandidate = e => { if(e.candidate) this.sig({type:'candidate', candidate:e.candidate}); };
-        this.rtc.onconnectionstatechange = () => { if(this.rtc.connectionState==='connected') onPeerJoin(); };
+
+    sig(d) { 
+        // Añadimos origen para saber de quién viene el mensaje en el server
+        // (El servidor debería rebotar 'origin', pero lo simulamos aquí si el server es simple)
+        if(this.ws) this.ws.send(JSON.stringify(d)); 
+    }
+
+    initRTC(peerId, offerer) {
+        const rtc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+        this.peers[peerId] = { rtc: rtc, ch: null };
+
+        rtc.onicecandidate = e => { 
+            if(e.candidate) this.sig({type:'candidate', candidate:e.candidate, target:peerId}); 
+        };
+        
+        rtc.onconnectionstatechange = () => { 
+            if(rtc.connectionState==='connected') onPeerJoin(peerId); 
+            if(rtc.connectionState==='disconnected') onPeerLeft(peerId);
+        };
+
         if(offerer) {
-            this.ch = this.rtc.createDataChannel("game", {ordered:false, maxRetransmits:0});
-            this.setupCh();
-            this.rtc.createOffer().then(o => { this.rtc.setLocalDescription(o); this.sig({type:'offer', sdp:o}); });
+            const ch = rtc.createDataChannel("game", {ordered:false, maxRetransmits:0});
+            this.peers[peerId].ch = ch;
+            this.setupCh(ch, peerId);
+            rtc.createOffer().then(o => { 
+                rtc.setLocalDescription(o); 
+                this.sig({type:'offer', sdp:o, target:peerId}); 
+            });
         } else {
-            this.rtc.ondatachannel = e => { this.ch = e.channel; this.setupCh(); };
+            rtc.ondatachannel = e => { 
+                this.peers[peerId].ch = e.channel; 
+                this.setupCh(e.channel, peerId); 
+            };
         }
     }
-    setupCh() { this.ch.onmessage = e => onNetData(JSON.parse(e.data)); this.ch.onopen = () => log("P2P LISTO"); }
-    send(d) { if(this.ch && this.ch.readyState==='open') this.ch.send(JSON.stringify(d)); }
+
+    setupCh(ch, peerId) { 
+        ch.onmessage = e => onNetData(JSON.parse(e.data), peerId); 
+        ch.onopen = () => log(`P2P con ${peerId} LISTO`); 
+    }
+
+    send(d) { 
+        // Broadcast a todos los peers conectados
+        const msg = JSON.stringify(d);
+        for(let pid in this.peers) {
+            const p = this.peers[pid];
+            if(p.ch && p.ch.readyState==='open') p.ch.send(msg);
+        }
+    }
 }
 
 // --- JUGADOR ---
@@ -289,7 +346,7 @@ class Player {
             if (this.deadTimer > 0) this.deadTimer--;
             else if (this.deadTimer === 0 && this.id === net.id) {
                 this.deadTimer = -1; 
-                setTimeout(() => { this.reset(); net.send({ t:'respawn' }); }, 2000);
+                setTimeout(() => { this.reset(); net.send({ t:'respawn', id:this.id }); }, 2000);
             }
             return;
         }
@@ -327,7 +384,7 @@ class Player {
             this.targetX = nextCol * CONFIG.TILE;
             this.targetY = nextRow * CONFIG.TILE;
             this.isMoving = true;
-            net.send({ t:'m', tx:this.targetX, ty:this.targetY, x:this.x, y:this.y });
+            net.send({ t:'m', tx:this.targetX, ty:this.targetY, x:this.x, y:this.y, id:this.id });
         }
     }
     placeBomb() {
@@ -389,8 +446,11 @@ class Explosion {
     }
     update() { 
         this.timer--; 
+        // Hitbox para todos los jugadores
         checkPlayerHit(this.col, this.row, state.localPlayer, this.ownerId);
-        checkPlayerHit(this.col, this.row, state.remotePlayer, this.ownerId);
+        for(let pid in state.players) {
+            checkPlayerHit(this.col, this.row, state.players[pid], this.ownerId);
+        }
         return this.timer <= 0; 
     }
     draw(ctx) { if (Math.floor(this.timer/3)%2===0) drawSprite(ctx, this.sprite, this.col*CONFIG.TILE, this.row*CONFIG.TILE); }
@@ -406,10 +466,20 @@ function checkPlayerHit(c, r, player, killerId) {
 function updateScore(killerId, victimId) {
     if (state.processingDeath) return;
     state.processingDeath = true; setTimeout(() => state.processingDeath = false, 1000);
+    
+    if(!state.scores[killerId]) state.scores[killerId] = 0;
+    
     if (killerId === victimId) state.scores[killerId]--;
     else state.scores[killerId]++;
-    document.getElementById('p1-score').innerText = "P1: " + state.scores[1];
-    document.getElementById('p2-score').innerText = "P2: " + state.scores[2];
+    
+    updateHUD();
+}
+
+function updateHUD() {
+    for(let i=1; i<=4; i++) {
+        const el = document.getElementById(`p${i}-score`);
+        if(el) el.innerText = `P${i}: ${state.scores[i] || 0}`;
+    }
 }
 
 function drawSprite(ctx, coord, x, y) {
@@ -430,7 +500,7 @@ function init() {
     // Detectar táctil y mostrar gamepad
     if('ontouchstart' in window || navigator.maxTouchPoints > 0) {
         document.getElementById('gamepad-area').style.display = 'flex';
-        resizeViewport(); // Reajustar pantalla considerando gamepad
+        resizeViewport();
     } else {
         resizeViewport();
     }
@@ -441,7 +511,14 @@ function init() {
 
 function generateMap() {
     mapGrid = [];
-    const safeZone = (c, r) => (c<=2 && r<=2) || (c>=CONFIG.COLS-3 && r>=CONFIG.ROWS-3);
+    // Zonas seguras para 4 esquinas
+    const safeZone = (c, r) => {
+        return (c<=2 && r<=2) ||                    // P1 (Arriba-Izq)
+               (c>=CONFIG.COLS-3 && r>=CONFIG.ROWS-3) || // P2 (Abajo-Der)
+               (c>=CONFIG.COLS-3 && r<=2) ||             // P3 (Arriba-Der)
+               (c<=2 && r>=CONFIG.ROWS-3);               // P4 (Abajo-Izq)
+    };
+
     for(let r=0; r<CONFIG.ROWS; r++) {
         let row = [];
         for(let c=0; c<CONFIG.COLS; c++) {
@@ -457,8 +534,10 @@ function createBomb(c, r, ownerId) { mapGrid[r][c] = TILE_TYPE.BOMB; bombs.push(
 
 function explode(bomb) {
     const centerC = bomb.col; const centerR = bomb.row; const ownerId = bomb.ownerId;
+    
+    // Liberar bomba del dueño (sea local o remoto)
     if (state.localPlayer && state.localPlayer.id === ownerId) state.localPlayer.activeBombs--;
-    if (state.remotePlayer && state.remotePlayer.id === ownerId) state.remotePlayer.activeBombs--;
+    else if (state.players[ownerId]) state.players[ownerId].activeBombs--;
 
     mapGrid[centerR][centerC] = TILE_TYPE.EMPTY;
     explosions.push(new Explosion(centerC, centerR, ownerId, 'center')); 
@@ -483,21 +562,16 @@ function explode(bomb) {
 }
 
 function resizeViewport() {
-    // Área disponible para el juego (pantalla total - controles si existen)
     const controlsH = document.getElementById('gamepad-area').style.display === 'flex' ? 200 : 0;
     const availW = window.innerWidth;
     const availH = window.innerHeight - controlsH;
 
-    // Evitar dividir por 0 o valores negativos
     if (availH < 0) return; 
 
     const scale = Math.min(availW / CONFIG.WIDTH, availH / CONFIG.HEIGHT);
     
-    // Asignar tamaño al canvas dentro del viewport
     canvas.width = CONFIG.WIDTH; 
     canvas.height = CONFIG.HEIGHT;
-    
-    // Escalado visual
     canvas.style.width = (CONFIG.WIDTH * scale) + "px";
     canvas.style.height = (CONFIG.HEIGHT * scale) + "px";
     
@@ -512,33 +586,66 @@ function startGame() {
     document.getElementById('btnPlay').innerText = "...";
     net.connect(room.toUpperCase());
 }
+
+function getSpawnInfo(id) {
+    // ID 1: Azul (Top-Left)
+    // ID 2: Rojo (Bottom-Right)
+    // ID 3: Verde (Top-Right)
+    // ID 4: Amarillo (Bottom-Left)
+    const colors = { 1: '#3498db', 2: '#e74c3c', 3: '#2ecc71', 4: '#f1c40f' };
+    const x = (id===1 || id===4) ? 1 : CONFIG.COLS - 2;
+    const y = (id===1 || id===3) ? 1 : CONFIG.ROWS - 2;
+    return { c: colors[id] || '#fff', x: x, y: y };
+}
+
 function onConnected(id) {
     document.getElementById('ui-layer').style.display = 'none';
     document.getElementById('hud').style.display = 'flex';
+    
+    // Mostrar scoreboards relevantes
+    for(let i=1; i<=4; i++) {
+        document.getElementById(`p${i}-score`).style.display = 'block';
+    }
+
     net.id = id;
-    const c = id===1 ? '#3498db' : '#e74c3c';
-    const cx = id===1 ? 1 : CONFIG.COLS - 2;
-    const cy = id===1 ? 1 : CONFIG.ROWS - 2;
-    state.localPlayer = new Player(id, cx, cy, c);
+    const info = getSpawnInfo(id);
+    state.localPlayer = new Player(id, info.x, info.y, info.c);
 }
-function onPeerJoin() {
-    log("RIVAL CONECTADO");
-    const rid = net.id===1 ? 2 : 1;
-    const c = rid===1 ? '#3498db' : '#e74c3c';
-    const cx = rid===1 ? 1 : CONFIG.COLS - 2;
-    const cy = rid===1 ? 1 : CONFIG.ROWS - 2;
-    state.remotePlayer = new Player(rid, cx, cy, c);
+
+function onPeerJoin(id) {
+    log(`JUGADOR ${id} SE UNIÓ`);
+    if(!state.players[id]) {
+        const info = getSpawnInfo(id);
+        state.players[id] = new Player(id, info.x, info.y, info.c);
+    }
+    // Host sincroniza mapa con nuevos
     if(net.id === 1) net.send({ t:'map', grid: mapGrid });
 }
-function onNetData(d) {
-    if (d.t === 'm' && state.remotePlayer) { 
-        state.remotePlayer.x = d.x; state.remotePlayer.y = d.y;
-        state.remotePlayer.targetX = d.tx; state.remotePlayer.targetY = d.ty;
-        state.remotePlayer.isMoving = true;
+
+function onPeerLeft(id) {
+    log(`JUGADOR ${id} SALIÓ`);
+    delete state.players[id];
+}
+
+function onNetData(d, peerId) {
+    // Si recibimos datos de movimiento, actualizamos al player correspondiente
+    const targetId = d.id || peerId; // Usar ID del paquete o del canal
+    const p = state.players[targetId];
+
+    if (d.t === 'm') {
+        if(!p) {
+            // Si no existe el player remoto (ej: entramos tarde), lo creamos
+            const info = getSpawnInfo(targetId);
+            state.players[targetId] = new Player(targetId, info.x, info.y, info.c);
+            return;
+        }
+        p.x = d.x; p.y = d.y;
+        p.targetX = d.tx; p.targetY = d.ty;
+        p.isMoving = true;
     }
     if (d.t === 'b') createBomb(d.c, d.r, d.oid);
     if (d.t === 'map') mapGrid = d.grid;
-    if (d.t === 'respawn' && state.remotePlayer) state.remotePlayer.reset();
+    if (d.t === 'respawn' && p) p.reset();
 }
 
 function gameLoop() {
@@ -547,8 +654,10 @@ function gameLoop() {
 
 function update() {
     if (state.localPlayer) state.localPlayer.update();
-    if (state.remotePlayer) {
-        const p = state.remotePlayer;
+    
+    // Actualizar todos los remotos
+    for(let pid in state.players) {
+        const p = state.players[pid];
         if (!p.isDead && p.isMoving) {
             if (p.x < p.targetX) p.x += CONFIG.SPEED;
             if (p.x > p.targetX) p.x -= CONFIG.SPEED;
@@ -557,6 +666,7 @@ function update() {
             if (p.x === p.targetX && p.y === p.targetY) p.isMoving = false;
         } else if (p.isDead) p.update(); 
     }
+
     for (let i = bombs.length - 1; i >= 0; i--) {
         const b = bombs[i];
         if (b.update()) { explode(b); bombs.splice(i, 1); }
@@ -579,11 +689,14 @@ function draw() {
     }
     bombs.forEach(b => b.draw(ctx));
     explosions.forEach(e => e.draw(ctx));
-    const players = [];
-    if(state.remotePlayer) players.push(state.remotePlayer);
-    if(state.localPlayer) players.push(state.localPlayer);
-    players.sort((a,b) => a.y - b.y);
-    players.forEach(p => p.draw(ctx));
+    
+    // Dibujar todos los players ordenados por Y
+    const allPlayers = [];
+    if(state.localPlayer) allPlayers.push(state.localPlayer);
+    for(let pid in state.players) allPlayers.push(state.players[pid]);
+    
+    allPlayers.sort((a,b) => a.y - b.y);
+    allPlayers.forEach(p => p.draw(ctx));
 }
 
 function setupInputs() {
