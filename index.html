@@ -2,171 +2,202 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BomberNet Engine v1.4 (4 Players & UI Fix)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Bombardo v3.1</title>
     <style>
-        /* --- LAYOUT PRINCIPAL (Flex Column) --- */
+        /* --- LAYOUT PRINCIPAL --- */
         body {
-            margin: 0; padding: 0;
-            background-color: #111;
+            margin: 0; padding: 0; background-color: #111;
             height: 100vh; width: 100vw;
-            display: flex; 
-            flex-direction: column; /* Apilar verticalmente */
-            align-items: center; 
-            justify-content: center; /* Centrar si sobra espacio */
-            overflow: hidden; 
-            touch-action: none; 
-            font-family: 'Courier New', monospace;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden; touch-action: none; font-family: 'Courier New', monospace;
+            user-select: none; -webkit-user-select: none;
         }
 
-        /* PANTALLA DE JUEGO (Arriba) */
+        /* CONTENEDOR DEL JUEGO */
         #game-viewport {
-            position: relative;
-            background: #000;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            image-rendering: pixelated;
-            /* Flex para ocupar espacio disponible pero respetar aspect ratio */
-            flex-grow: 1; 
-            max-width: 100%;
-            max-height: 100%; /* No crecer más de la pantalla */
-            display: flex; 
-            justify-content: center;
-            align-items: center;
-        }
-
-        canvas { 
-            display: block; 
-            /* El canvas se ajustará por JS manteniendo aspect ratio */
+            position: relative; background: #000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); image-rendering: pixelated;
+            width: 480px; height: 352px; /* 15x11 tiles de 32px */
+            flex-shrink: 1; display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
         }
         
-        /* UI INTERNA (Menú) */
-        #ui-layer {
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        /* --- SISTEMA DE PANTALLAS (UI) --- */
+        .screen-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(0, 0, 0, 0.85); z-index: 100;
+            background: rgba(0, 0, 0, 0.9); z-index: 100;
         }
-        .panel { background: #2c3e50; border: 4px solid #fff; padding: 20px; text-align: center; }
+        
+        .panel { 
+            background: #2c3e50; border: 4px solid #fff; padding: 20px; 
+            text-align: center; min-width: 220px; box-sizing: border-box; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
         h1 { color: #f1c40f; margin: 0 0 15px 0; font-size: 24px; text-shadow: 2px 2px #c0392b; }
-        input { padding: 10px; font-size: 16px; background: #000; color: #fff; border: 2px solid #555; text-align: center; display: block; margin: 0 auto 15px auto; width: 150px; font-family: inherit; text-transform: uppercase; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #e74c3c; color: white; border: 2px solid #fff; font-family: inherit; font-weight: bold; text-transform: uppercase; width: 100%; }
-        button:active { background: #fff; color: #e74c3c; }
-        button:disabled { background: #555; color: #888; border-color: #555; cursor: wait; }
-        #status-log { font-size: 10px; color: #aaa; margin-top: 10px; }
+        
+        input { 
+            padding: 10px; background: #000; color: #fff; border: 2px solid #555; 
+            text-align: center; display: block; margin: 0 auto 15px auto; 
+            width: 150px; text-transform: uppercase; font-size: 16px; 
+        }
+        
+        button { 
+            padding: 12px 20px; background: #e74c3c; color: white; border: 2px solid #fff; 
+            font-weight: bold; width: 100%; font-size: 16px; cursor: pointer; margin-top: 5px; 
+        }
+        button:active { transform: scale(0.95); background: #c0392b; }
+        button:disabled { background: #555; color: #888; border-color: #555; cursor: not-allowed; transform: none; }
+        
+        #login-log { font-size: 11px; color: #aaa; margin-top: 10px; min-height: 14px; }
 
-        /* HUD (Puntuación 4 Jugadores) */
+        /* --- LOBBY UI --- */
+        .lobby-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .player-slot { 
+            background: #333; padding: 10px; border: 2px solid #555; 
+            color: #777; font-size: 12px; font-weight: bold; 
+        }
+        .player-slot.active { border-color: #fff; color: #fff; }
+        .player-slot.p1.active { background: #3498db; }
+        .player-slot.p2.active { background: #e74c3c; }
+        .player-slot.p3.active { background: #2ecc71; }
+        .player-slot.p4.active { background: #f1c40f; }
+
+        /* HUD JUEGO */
         #hud { 
             position: absolute; top: 0; left: 0; width: 100%; 
             display: flex; flex-wrap: wrap; justify-content: space-around; 
-            padding: 5px; box-sizing: border-box; pointer-events: none; z-index: 10; 
+            padding: 5px; pointer-events: none; z-index: 10; box-sizing: border-box;
         }
         .score-box { 
-            background: rgba(0,0,0,0.6); padding: 2px 6px; color: white; 
+            background: rgba(0,0,0,0.6); padding: 4px 8px; color: white; 
             font-weight: bold; border: 1px solid rgba(255,255,255,0.3); 
-            font-size: 10px; text-shadow: 1px 1px 0 #000; margin: 2px;
+            font-size: 12px; text-shadow: 1px 1px 0 #000; margin: 2px; 
         }
-        #p1-score { color: #3498db; } /* Azul */
-        #p2-score { color: #e74c3c; } /* Rojo */
-        #p3-score { color: #2ecc71; } /* Verde */
-        #p4-score { color: #f1c40f; } /* Amarillo */
+        #p1-score { color: #3498db; } #p2-score { color: #e74c3c; } 
+        #p3-score { color: #2ecc71; } #p4-score { color: #f1c40f; }
+        
+        /* OVERLAY GAME OVER */
+        #game-over-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 50;
+        }
 
-        /* --- CONTROLES GAMEPAD (Inferior - Fuera del juego) --- */
+        /* --- CONTROLES MÓVILES --- */
         #gamepad-area {
-            display: none; /* JS lo activa en móvil */
-            width: 100%;
-            height: 180px; /* Altura fija cómoda */
-            background: #1a1a1a;
-            border-top: 2px solid #444;
-            flex-direction: row;
-            justify-content: space-between; /* D-PAD izq, Botón der */
-            align-items: center;
-            padding: 10px 20px; /* Padding lateral */
-            box-sizing: border-box;
-            flex-shrink: 0; /* No encogerse */
-        }
-
-        /* Estilos base de los botones */
-        .gp-btn {
-            position: absolute;
-            background-image: url('sprites.png');
-            background-repeat: no-repeat;
-            image-rendering: pixelated;
-            touch-action: none;
-            opacity: 0.8;
-            -webkit-tap-highlight-color: transparent; 
-        }
-        .gp-btn:active { opacity: 1.0; transform: scale(0.95); }
-
-        /* === D-PAD === */
-        .d-pad {
-            position: relative; width: 150px; height: 150px;
-            /* background: rgba(255,0,0,0.1); Debug */
+            display: none; width: 100%; min-height: 240px; 
+            background: #1a1a1a; border-top: 4px solid #333;
+            flex-direction: row; justify-content: space-between; align-items: flex-start;
+            padding: 20px 30px; padding-bottom: max(20px, env(safe-area-inset-bottom));
+            box-sizing: border-box; flex-shrink: 0;
         }
         
-        /* Flechas (C4 = 64, 96) -> Escala 2x */
-        .arrow-btn {
-            width: 64px; height: 64px;
+        .gp-btn { 
+            position: absolute; 
+            background-image: url('sprites.png'); 
+            background-repeat: no-repeat; 
+            image-rendering: pixelated; 
+        }
+        .gp-btn:active { filter: brightness(1.2); transform: scale(0.95); }
+        
+        .d-pad { position: relative; width: 180px; height: 180px; }
+        
+        /* AJUSTE DE BOTONES UI:
+           Escala 2x para los botones de flecha (32px -> 64px).
+           Sheet original: 224x128. Scaled 2x: 448px 256px.
+           Flecha (Up): Tile 2,3 (x=64, y=96) -> Scaled: 128, 192 -> Pos: -128px -192px.
+        */
+        .arrow-btn { 
+            width: 64px; height: 64px; 
             background-size: 448px 256px; 
             background-position: -128px -192px; 
         }
-
-        #btn-up    { left: 43px; top: 0; }
-        #btn-down  { left: 43px; bottom: 0; transform: rotate(180deg); }
-        #btn-left  { left: 0; top: 43px; transform: rotate(-90deg); }
-        #btn-right { right: 0; top: 43px; transform: rotate(90deg); }
-
-        #btn-down:active  { transform: rotate(180deg) scale(0.9); }
-        #btn-left:active  { transform: rotate(-90deg) scale(0.9); }
-        #btn-right:active { transform: rotate(90deg) scale(0.9); }
-
-        /* === BOTÓN BOMBA (C2) === */
-        /* C2 = 64, 32 -> Escala 2.5x */
-        #action-wrapper {
-            position: relative; width: 90px; height: 90px; display: flex; justify-content: center; align-items: center;
+        
+        #btn-up { left: 58px; top: 0; } 
+        #btn-down { left: 58px; bottom: 0; transform: rotate(180deg); }
+        #btn-left { left: 0; top: 58px; transform: rotate(-90deg); } 
+        #btn-right { right: 0; top: 58px; transform: rotate(90deg); }
+        
+        #action-wrapper { 
+            position: relative; width: 120px; height: 120px; 
+            display: flex; justify-content: center; align-items: center; margin-top: 20px; 
         }
-        #action-btn {
-            position: relative; 
-            width: 80px; height: 80px;
-            background-size: 560px 320px; 
+        
+        /* AJUSTE DE BOTÓN BOMBA:
+           Escala 2.5x para llenar el botón de 80px (32px * 2.5 = 80px).
+           Sheet Scaled 2.5x: 560px 320px.
+           Bomba: Tile 2,1 (x=64, y=32) -> Scaled: 160, 80 -> Pos: -160px -80px.
+        */
+        #action-btn { 
+            position: relative; width: 80px; height: 80px; 
+            background-size: 560px 320px;
             background-position: -160px -80px;
-            
-            background-color: #c0392b; 
-            border-radius: 50%;
-            border: 4px solid rgba(255,255,255,0.2);
-            box-shadow: 0 6px 0 #000;
+            background-color: #c0392b; border-radius: 50%; 
+            border: 4px solid rgba(255,255,255,0.2); 
+            box-shadow: 0 8px 0 #000; 
         }
-        #action-btn:active { 
-            box-shadow: 0 3px 0 #000; 
-            transform: translateY(3px); 
-        }
+        #action-btn:active { box-shadow: 0 4px 0 #000; transform: translateY(4px); }
 
     </style>
 </head>
 <body>
 
-    <!-- VIEWPORT DEL JUEGO (Arriba) -->
     <div id="game-viewport">
         <canvas id="gameCanvas"></canvas>
         
-        <!-- HUD (Puntuación 4P) -->
+        <!-- HUD JUEGO -->
         <div id="hud" style="display:none;">
             <div id="p1-score" class="score-box">P1: 0</div>
             <div id="p2-score" class="score-box">P2: 0</div>
             <div id="p3-score" class="score-box" style="display:none;">P3: 0</div>
             <div id="p4-score" class="score-box" style="display:none;">P4: 0</div>
         </div>
+        
+        <!-- GAME OVER OVERLAY -->
+        <div id="game-over-overlay" style="display:none;">
+            <h1 id="winner-text" style="font-size: 40px; color: #f1c40f;">GANADOR P1</h1>
+            <p style="color: white; margin-top:0;">Llegó a 3 puntos</p>
+            <button onclick="location.reload()" style="width: auto; padding: 10px 30px;">REINICIAR</button>
+        </div>
 
-        <div id="ui-layer">
+        <!-- PANTALLA DE CARGA -->
+        <div id="screen-loading" class="screen-layer">
+            <h1 style="color:white;">CARGANDO...</h1>
+        </div>
+
+        <!-- PANTALLA 1: LOGIN -->
+        <div id="screen-login" class="screen-layer" style="display:none;">
             <div class="panel">
-                <h1>BomberNet</h1>
-                <div style="font-size:10px; margin-bottom:10px;">v1.4 - 4 PLAYERS</div>
-                <input type="text" id="roomInput" placeholder="CÓDIGO SALA" value="TEST" maxlength="6">
-                <button id="btnPlay" onclick="startGame()">JUGAR</button>
-                <div id="status-log">OFFLINE</div>
+                <h1>Bombardo!💣</h1>
+                <div style="font-size:10px; margin-bottom:10px; color:#ccc;">Desarrollado por: Steven Arias</div>
+                <input type="text" id="roomInput" placeholder="ID SALA" value="TEST" maxlength="6">
+                <button id="btnConnect" onclick="connectToServer()">CONECTAR</button>
+                <div id="login-log">Desconectado</div>
+            </div>
+        </div>
+
+        <!-- PANTALLA 2: LOBBY -->
+        <div id="screen-lobby" class="screen-layer" style="display:none;">
+            <div class="panel">
+                <h1 style="font-size:20px;">SALA DE ESPERA</h1>
+                <div class="lobby-grid">
+                    <div id="slot-1" class="player-slot p1">P1 (HOST)</div>
+                    <div id="slot-2" class="player-slot p2">P2: ESPERANDO...</div>
+                    <div id="slot-3" class="player-slot p3">P3: ESPERANDO...</div>
+                    <div id="slot-4" class="player-slot p4">P4: ESPERANDO...</div>
+                </div>
+                
+                <button id="btnStartGame" onclick="hostStartGame()" disabled style="display:none; background:#2ecc71;">INICIAR PARTIDA</button>
+                <div style="font-size:10px; margin-top:10px; color:#aaa;" id="lobby-msg">Esperando al Host...</div>
             </div>
         </div>
     </div>
 
-    <!-- ZONA DE CONTROLES (Abajo - Fuera del Canvas) -->
+    <!-- CONTROLES TÁCTILES -->
     <div id="gamepad-area">
         <div class="d-pad">
             <div id="btn-up" class="gp-btn arrow-btn"></div>
@@ -181,14 +212,15 @@
 
 <script>
 // --- CONFIGURACIÓN ---
-const CONFIG = {
-    TILE: 32, COLS: 15, ROWS: 11,
-    get WIDTH() { return this.COLS * this.TILE; },
-    get HEIGHT() { return this.ROWS * this.TILE; },
-    SPEED: 2, BRICK_DENSITY: 0.6, BOMB_RANGE: 2, MAX_BOMBS: 2
+const CONFIG = { 
+    TILE: 32, COLS: 15, ROWS: 11, 
+    WIDTH: 480, HEIGHT: 352, 
+    SPEED: 2, 
+    BRICK_DENSITY: 0.6, 
+    BOMB_RANGE: 2, MAX_BOMBS: 2,
+    WIN_SCORE: 3 // Puntos para ganar
 };
 
-// --- ATLAS DE SPRITES ---
 const SPRITES = {
     WALL_SOLID: {x:0, y:0}, WALL_BRICK: {x:1, y:0}, FLOOR: {x:0, y:1}, 
     BOMB_IDLE: [{x:0, y:2}, {x:1, y:2}], 
@@ -201,33 +233,49 @@ const SPRITES = {
     }
 };
 
+// --- CARGA DE RECURSOS ---
 const assets = { spritesheet: new Image(), loaded: false };
-assets.spritesheet.src = 'sprites.png';
-assets.spritesheet.onload = () => { assets.loaded = true; };
 
-// --- ESTADO GLOBAL ---
+function loadAssets() {
+    assets.spritesheet.src = 'sprites.png';
+    assets.spritesheet.onload = () => { 
+        assets.loaded = true; 
+        console.log("Sprites cargados correctamente.");
+        showLoginScreen(); 
+    };
+    assets.spritesheet.onerror = () => {
+        console.warn("No se encontró sprites.png. Usando modo debug.");
+        assets.loaded = false;
+        showLoginScreen();
+    };
+}
+
+function showLoginScreen() {
+    document.getElementById('screen-loading').style.display = 'none';
+    document.getElementById('screen-login').style.display = 'flex';
+    init(); 
+}
+
+// --- ESTADO ---
 let mapGrid = [];
 let bombs = []; 
 let explosions = []; 
 const TILE_TYPE = { EMPTY: 0, WALL: 1, BRICK: 2, BOMB: 3 };
 
 const state = {
-    running: false,
+    status: 'LOGIN', // LOGIN, LOBBY, GAME
     input: { x: 0, y: 0, active: false },
     localPlayer: null,
-    players: {}, // Mapa de jugadores remotos { id: Player }
+    players: {}, 
     frame: 0,
     scores: { 1:0, 2:0, 3:0, 4:0 },
-    processingDeath: false
+    processingDeath: false,
+    winner: null
 };
 
-// --- RED (Soporte Multi-Peer) ---
+// --- RED ---
 class Net {
-    constructor() { 
-        this.ws=null; 
-        this.id=0;
-        this.peers = {}; // { id: { rtc, ch } }
-    }
+    constructor() { this.ws=null; this.id=0; this.peers={}; }
     
     connect(room) {
         log("Conectando...");
@@ -240,14 +288,10 @@ class Net {
     async handle(m) {
         switch(m.type) {
             case 'id': 
-                this.id=m.id; 
-                onConnected(m.id); 
+                this.id = m.id; 
+                enterLobby(m.id); 
                 break;
             case 'peer_connected': 
-                // Nuevo peer (m.id) se unió. Yo (Host o veterano) inicio conexión hacia él.
-                // Nota: En una malla completa, idealmente el ID menor inicia, o el server orquesta.
-                // Asumiremos que el server avisa a los existentes que conecten al nuevo.
-                log(`Peer ${m.id} entró.`);
                 this.initRTC(m.id, true); 
                 break;
             case 'offer': 
@@ -265,32 +309,24 @@ class Net {
             case 'candidate': 
                 if(this.peers[m.origin]) await this.peers[m.origin].rtc.addIceCandidate(m.candidate); 
                 break;
-            case 'peer_disconnected':
-                // TODO: Server debería enviar ID de quién se fue
-                // Por ahora limpiaremos si falla el canal
-                break;
         }
     }
 
-    sig(d) { 
-        // Añadimos origen para saber de quién viene el mensaje en el server
-        // (El servidor debería rebotar 'origin', pero lo simulamos aquí si el server es simple)
-        if(this.ws) this.ws.send(JSON.stringify(d)); 
-    }
+    sig(d) { if(this.ws) this.ws.send(JSON.stringify(d)); }
 
     initRTC(peerId, offerer) {
         const rtc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
         this.peers[peerId] = { rtc: rtc, ch: null };
-
+        
         rtc.onicecandidate = e => { 
             if(e.candidate) this.sig({type:'candidate', candidate:e.candidate, target:peerId}); 
         };
         
         rtc.onconnectionstatechange = () => { 
-            if(rtc.connectionState==='connected') onPeerJoin(peerId); 
-            if(rtc.connectionState==='disconnected') onPeerLeft(peerId);
+            if(rtc.connectionState==='connected') updateLobbyUI(peerId, true);
+            if(rtc.connectionState==='disconnected') updateLobbyUI(peerId, false);
         };
-
+        
         if(offerer) {
             const ch = rtc.createDataChannel("game", {ordered:false, maxRetransmits:0});
             this.peers[peerId].ch = ch;
@@ -309,11 +345,13 @@ class Net {
 
     setupCh(ch, peerId) { 
         ch.onmessage = e => onNetData(JSON.parse(e.data), peerId); 
-        ch.onopen = () => log(`P2P con ${peerId} LISTO`); 
+        ch.onopen = () => {
+            updateLobbyUI(peerId, true);
+            if(this.id === 1) this.send({ t:'lobby_sync', players: Object.keys(this.peers).map(Number).concat([1]) });
+        };
     }
 
     send(d) { 
-        // Broadcast a todos los peers conectados
         const msg = JSON.stringify(d);
         for(let pid in this.peers) {
             const p = this.peers[pid];
@@ -322,12 +360,13 @@ class Net {
     }
 }
 
-// --- JUGADOR ---
+// --- JUEGO (CLASES) ---
 class Player {
     constructor(id, col, row, colorTint) {
         this.id = id; this.tint = colorTint;
         this.spawnX = col * CONFIG.TILE; this.spawnY = row * CONFIG.TILE;
         this.activeBombs = 0;
+        this.sentIdlePacket = true; // Control para no floodear red al estar quieto
         this.reset();
     }
     reset() {
@@ -336,25 +375,33 @@ class Player {
         this.isMoving = false; this.isDead = false;
         this.animState = 'IDLE_DOWN'; this.facingLeft = false;
         this.deadTimer = 0; this.activeBombs = 0;
+        this.sentIdlePacket = true;
     }
-    die() {
-        if(this.isDead) return;
-        this.isDead = true; this.animState = 'DIE'; this.deadTimer = 60;
+    die() { 
+        if(this.isDead) return; 
+        this.isDead = true; 
+        this.animState = 'DIE'; 
+        this.deadTimer = 90; // 1.5 segundos muerte
     }
     update() {
         if (this.isDead) {
             if (this.deadTimer > 0) this.deadTimer--;
-            else if (this.deadTimer === 0 && this.id === net.id) {
-                this.deadTimer = -1; 
-                setTimeout(() => { this.reset(); net.send({ t:'respawn', id:this.id }); }, 2000);
+            else if (this.deadTimer === 0) {
+                this.deadTimer = -1;
+                this.reset(); 
+                if(this.id === net.id) net.send({ t:'respawn', id:this.id });
             }
             return;
         }
+
         if (this.isMoving) {
-            if (this.targetY > this.y) this.animState = 'WALK_DOWN';
-            else if (this.targetY < this.y) this.animState = 'WALK_UP';
-            else if (this.targetX > this.x) { this.animState = 'WALK_SIDE'; this.facingLeft = false; }
-            else if (this.targetX < this.x) { this.animState = 'WALK_SIDE'; this.facingLeft = true; }
+            // Local visual smoothing
+            if (this.id === net.id) {
+                if (this.targetY > this.y) this.animState = 'WALK_DOWN';
+                else if (this.targetY < this.y) this.animState = 'WALK_UP';
+                else if (this.targetX > this.x) { this.animState = 'WALK_SIDE'; this.facingLeft = false; }
+                else if (this.targetX < this.x) { this.animState = 'WALK_SIDE'; this.facingLeft = true; }
+            }
             
             if (this.x < this.targetX) this.x += CONFIG.SPEED;
             if (this.x > this.targetX) this.x -= CONFIG.SPEED;
@@ -366,52 +413,105 @@ class Player {
                 this.checkInput();
             }
         } else {
-            if (this.animState === 'WALK_DOWN') this.animState = 'IDLE_DOWN';
-            if (this.animState === 'WALK_UP') this.animState = 'IDLE_UP';
-            if (this.animState === 'WALK_SIDE') this.animState = 'IDLE_SIDE';
+            // Idle states
+            if (this.id === net.id) {
+                if (this.animState === 'WALK_DOWN') this.animState = 'IDLE_DOWN';
+                if (this.animState === 'WALK_UP') this.animState = 'IDLE_UP';
+                if (this.animState === 'WALK_SIDE') this.animState = 'IDLE_SIDE';
+            }
             this.checkInput();
         }
     }
     checkInput() {
         if (this.id !== net.id) return; 
+        if (state.winner) return;
+
         if (state.input.active) {
             let col = Math.round(this.x / CONFIG.TILE);
             let row = Math.round(this.y / CONFIG.TILE);
             let nextCol = col + state.input.x;
             let nextRow = row + state.input.y;
             if (nextCol < 0 || nextCol >= CONFIG.COLS || nextRow < 0 || nextRow >= CONFIG.ROWS) return;
-            if (mapGrid[nextRow][nextCol] !== TILE_TYPE.EMPTY) return;
+            if (mapGrid[nextRow][nextCol] !== TILE_TYPE.EMPTY) return; 
+            const bombAtDest = bombs.find(b => b.col === nextCol && b.row === nextRow);
+            if (bombAtDest) return;
+            
             this.targetX = nextCol * CONFIG.TILE;
             this.targetY = nextRow * CONFIG.TILE;
             this.isMoving = true;
-            net.send({ t:'m', tx:this.targetX, ty:this.targetY, x:this.x, y:this.y, id:this.id });
+            this.sentIdlePacket = false; // Nos movemos, así que necesitaremos enviar Idle luego
+
+            // Determinar animación futura
+            let nextAnim = this.animState;
+            let facing = this.facingLeft;
+            if(state.input.y > 0) nextAnim = 'WALK_DOWN';
+            else if(state.input.y < 0) nextAnim = 'WALK_UP';
+            else if(state.input.x > 0) { nextAnim = 'WALK_SIDE'; facing = false; }
+            else if(state.input.x < 0) { nextAnim = 'WALK_SIDE'; facing = true; }
+            
+            // ENVIAR MOVIMIENTO
+            net.send({ 
+                t:'m', 
+                tx:this.targetX, ty:this.targetY, 
+                x:this.x, y:this.y, 
+                id:this.id,
+                a: nextAnim, 
+                f: facing    
+            });
+        } else {
+            // FIX IDLE SYNC: Si acabamos de dejar de movernos y no hemos enviado paquete
+            if (!this.sentIdlePacket) {
+                // Calcular estado idle
+                let idleAnim = this.animState;
+                if(idleAnim.startsWith('WALK_DOWN')) idleAnim = 'IDLE_DOWN';
+                if(idleAnim.startsWith('WALK_UP')) idleAnim = 'IDLE_UP';
+                if(idleAnim.startsWith('WALK_SIDE')) idleAnim = 'IDLE_SIDE';
+                
+                this.animState = idleAnim;
+
+                // Enviar paquete IDLE una sola vez
+                net.send({ 
+                    t:'m', 
+                    tx:this.x, ty:this.y, 
+                    x:this.x, y:this.y, 
+                    id:this.id,
+                    a: idleAnim, 
+                    f: this.facingLeft    
+                });
+                this.sentIdlePacket = true;
+            }
         }
     }
     placeBomb() {
-        if (this.isDead || this.activeBombs >= CONFIG.MAX_BOMBS) return;
+        if (this.isDead || this.activeBombs >= CONFIG.MAX_BOMBS || state.winner) return;
         const c = Math.round(this.x / CONFIG.TILE);
         const r = Math.round(this.y / CONFIG.TILE);
-        if (mapGrid[r][c] === TILE_TYPE.BOMB) return;
+        if (mapGrid[r][c] === TILE_TYPE.BOMB) return; 
+        if (bombs.some(b => b.col === c && b.row === r)) return;
         createBomb(c, r, this.id);
         this.activeBombs++;
         net.send({ t:'b', c:c, r:r, oid:this.id });
     }
     draw(ctx) {
-        if (this.isDead && this.deadTimer <= 0) return;
+        if (this.isDead && this.deadTimer <= 0) return; 
+        
         const animData = SPRITES.CHAR[this.animState];
         let frameIdx = 0;
         if (this.animState === 'DIE') {
             const total = animData.length;
-            frameIdx = Math.min(Math.floor((1 - (this.deadTimer / 60)) * total), total - 1);
+            frameIdx = Math.min(Math.floor((1 - (this.deadTimer / 90)) * total), total - 1);
         } else frameIdx = Math.floor(state.frame / 10) % animData.length;
         
         const coords = animData[frameIdx];
         const drawX = this.x; const drawY = this.y - 8; 
+        
+        ctx.save();
         if (this.facingLeft) {
-            ctx.save(); ctx.scale(-1, 1);
-            drawSprite(ctx, coords, -drawX - CONFIG.TILE, drawY);
-            ctx.restore();
+            ctx.translate(drawX + CONFIG.TILE, drawY);
+            ctx.scale(-1, 1);
+            drawSprite(ctx, coords, 0, 0);
         } else drawSprite(ctx, coords, drawX, drawY);
+        ctx.restore();
 
         if (!this.isDead) {
             ctx.fillStyle = this.tint;
@@ -446,33 +546,44 @@ class Explosion {
     }
     update() { 
         this.timer--; 
-        // Hitbox para todos los jugadores
         checkPlayerHit(this.col, this.row, state.localPlayer, this.ownerId);
-        for(let pid in state.players) {
-            checkPlayerHit(this.col, this.row, state.players[pid], this.ownerId);
-        }
+        for(let pid in state.players) checkPlayerHit(this.col, this.row, state.players[pid], this.ownerId);
         return this.timer <= 0; 
     }
     draw(ctx) { if (Math.floor(this.timer/3)%2===0) drawSprite(ctx, this.sprite, this.col*CONFIG.TILE, this.row*CONFIG.TILE); }
 }
 
 function checkPlayerHit(c, r, player, killerId) {
-    if (!player || player.isDead) return;
+    if (!player || player.isDead || state.winner) return;
     if (Math.round(player.x / CONFIG.TILE) === c && Math.round(player.y / CONFIG.TILE) === r) {
-        player.die(); updateScore(killerId, player.id);
+        player.die(); 
+        updateScore(killerId, player.id);
     }
 }
 
 function updateScore(killerId, victimId) {
-    if (state.processingDeath) return;
-    state.processingDeath = true; setTimeout(() => state.processingDeath = false, 1000);
+    if (state.processingDeath || state.winner) return;
+    state.processingDeath = true; 
+    setTimeout(() => state.processingDeath = false, 500);
     
-    if(!state.scores[killerId]) state.scores[killerId] = 0;
-    
-    if (killerId === victimId) state.scores[killerId]--;
-    else state.scores[killerId]++;
-    
+    if (killerId === victimId) {
+        state.scores[killerId] = Math.max(0, (state.scores[killerId] || 0) - 1);
+    } else {
+        if(!state.scores[killerId]) state.scores[killerId] = 0;
+        state.scores[killerId]++;
+    }
     updateHUD();
+    checkWinCondition();
+}
+
+function checkWinCondition() {
+    for(let pid in state.scores) {
+        if(state.scores[pid] >= CONFIG.WIN_SCORE) {
+            state.winner = pid;
+            document.getElementById('game-over-overlay').style.display = 'flex';
+            document.getElementById('winner-text').innerText = `GANADOR P${pid}`;
+        }
+    }
 }
 
 function updateHUD() {
@@ -487,38 +598,115 @@ function drawSprite(ctx, coord, x, y) {
     else { ctx.fillStyle = "#ff00ff"; ctx.fillRect(x, y, 32, 32); }
 }
 
-// --- SISTEMA ---
+// --- SISTEMA & FLUJO ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const net = new Net();
+
+window.onload = loadAssets;
 
 function init() {
     ctx.imageSmoothingEnabled = false;
     window.addEventListener('resize', resizeViewport);
     setupInputs();
-    
-    // Detectar táctil y mostrar gamepad
     if('ontouchstart' in window || navigator.maxTouchPoints > 0) {
         document.getElementById('gamepad-area').style.display = 'flex';
-        resizeViewport();
-    } else {
-        resizeViewport();
     }
-    
-    generateMap();
+    resizeViewport();
+    generateMap(); 
     requestAnimationFrame(gameLoop);
+}
+
+function connectToServer() {
+    const room = document.getElementById('roomInput').value;
+    if(!room) return;
+    document.getElementById('btnConnect').disabled = true;
+    document.getElementById('btnConnect').innerText = "...";
+    net.connect(room.toUpperCase());
+}
+
+function enterLobby(myId) {
+    state.status = 'LOBBY';
+    document.getElementById('screen-login').style.display = 'none';
+    document.getElementById('screen-lobby').style.display = 'flex';
+    updateLobbyUI(myId, true);
+    if(myId === 1) {
+        document.getElementById('btnStartGame').style.display = 'block';
+        document.getElementById('btnStartGame').disabled = false;
+        document.getElementById('lobby-msg').innerText = "Eres el HOST. Espera jugadores y dale a Iniciar.";
+    }
+}
+
+function updateLobbyUI(id, connected) {
+    const slot = document.getElementById(`slot-${id}`);
+    if(slot) {
+        if(connected) { slot.classList.add('active'); slot.innerText = `P${id} (LISTO)`; }
+        else { slot.classList.remove('active'); slot.innerText = `P${id}: ...`; }
+    }
+}
+
+function hostStartGame() {
+    if(net.id !== 1) return;
+    generateMap();
+    net.send({ t:'start', grid:mapGrid });
+    beginGameLoop();
+}
+
+function beginGameLoop() {
+    state.status = 'GAME';
+    document.getElementById('screen-lobby').style.display = 'none';
+    document.getElementById('hud').style.display = 'flex';
+    for(let i=1; i<=4; i++) document.getElementById(`p${i}-score`).style.display = 'block';
+    
+    const info = getSpawnInfo(net.id);
+    state.localPlayer = new Player(net.id, info.x, info.y, info.c);
+}
+
+function onNetData(d, peerId) {
+    const targetId = d.id || peerId;
+    if (state.status === 'LOBBY') {
+        if(d.t === 'start') {
+            mapGrid = d.grid;
+            beginGameLoop();
+        }
+        if(d.t === 'lobby_sync') {
+             d.players.forEach(pid => updateLobbyUI(pid, true));
+        }
+        return;
+    }
+    if (state.status === 'GAME') {
+        let p = state.players[targetId];
+        if (d.t === 'm') {
+            if(!p) {
+                const info = getSpawnInfo(targetId);
+                state.players[targetId] = new Player(targetId, info.x, info.y, info.c);
+                p = state.players[targetId];
+            }
+            p.x = d.x; p.y = d.y;
+            p.targetX = d.tx; p.targetY = d.ty;
+            p.isMoving = true;
+            
+            // SYNC VISUAL: Aplicar animación recibida por red
+            if(d.a) p.animState = d.a;
+            if(typeof d.f !== 'undefined') p.facingLeft = d.f;
+        }
+        if (d.t === 'b') createBomb(d.c, d.r, d.oid);
+        if (d.t === 'map') mapGrid = d.grid;
+        if (d.t === 'respawn' && p) p.reset();
+    }
+}
+
+// --- HELPERS ---
+function getSpawnInfo(id) {
+    const colors = { 1: '#3498db', 2: '#e74c3c', 3: '#2ecc71', 4: '#f1c40f' };
+    const x = (id===1 || id===4) ? 1 : CONFIG.COLS - 2;
+    const y = (id===1 || id===3) ? 1 : CONFIG.ROWS - 2;
+    return { c: colors[id] || '#fff', x: x, y: y };
 }
 
 function generateMap() {
     mapGrid = [];
-    // Zonas seguras para 4 esquinas
-    const safeZone = (c, r) => {
-        return (c<=2 && r<=2) ||                    // P1 (Arriba-Izq)
-               (c>=CONFIG.COLS-3 && r>=CONFIG.ROWS-3) || // P2 (Abajo-Der)
-               (c>=CONFIG.COLS-3 && r<=2) ||             // P3 (Arriba-Der)
-               (c<=2 && r>=CONFIG.ROWS-3);               // P4 (Abajo-Izq)
-    };
-
+    const safeZone = (c, r) => (c<=2 && r<=2) || (c>=CONFIG.COLS-3 && r>=CONFIG.ROWS-3) || (c>=CONFIG.COLS-3 && r<=2) || (c<=2 && r>=CONFIG.ROWS-3);
     for(let r=0; r<CONFIG.ROWS; r++) {
         let row = [];
         for(let c=0; c<CONFIG.COLS; c++) {
@@ -531,17 +719,12 @@ function generateMap() {
 }
 
 function createBomb(c, r, ownerId) { mapGrid[r][c] = TILE_TYPE.BOMB; bombs.push(new Bomb(c, r, ownerId)); }
-
 function explode(bomb) {
     const centerC = bomb.col; const centerR = bomb.row; const ownerId = bomb.ownerId;
-    
-    // Liberar bomba del dueño (sea local o remoto)
     if (state.localPlayer && state.localPlayer.id === ownerId) state.localPlayer.activeBombs--;
     else if (state.players[ownerId]) state.players[ownerId].activeBombs--;
-
     mapGrid[centerR][centerC] = TILE_TYPE.EMPTY;
     explosions.push(new Explosion(centerC, centerR, ownerId, 'center')); 
-
     const dirs = [{x:0, y:-1}, {x:0, y:1}, {x:-1, y:0}, {x:1, y:0}]; 
     dirs.forEach(dir => {
         for(let i=1; i<=CONFIG.BOMB_RANGE; i++) {
@@ -549,10 +732,8 @@ function explode(bomb) {
             if(nc<0 || nr<0 || nc>=CONFIG.COLS || nr>=CONFIG.ROWS) break;
             const type = mapGrid[nr][nc];
             if (type === TILE_TYPE.WALL) break; 
-            
-            if (type === TILE_TYPE.BRICK) {
-                mapGrid[nr][nc] = TILE_TYPE.EMPTY; explosions.push(new Explosion(nc, nr, ownerId)); break; 
-            } else if (type === TILE_TYPE.BOMB) {
+            if (type === TILE_TYPE.BRICK) { mapGrid[nr][nc] = TILE_TYPE.EMPTY; explosions.push(new Explosion(nc, nr, ownerId)); break; } 
+            else if (type === TILE_TYPE.BOMB) {
                 const chained = bombs.find(b => b.col === nc && b.row === nr && !b.exploded);
                 if (chained) chained.detonate();
                 explosions.push(new Explosion(nc, nr, ownerId));
@@ -562,122 +743,32 @@ function explode(bomb) {
 }
 
 function resizeViewport() {
-    const controlsH = document.getElementById('gamepad-area').style.display === 'flex' ? 200 : 0;
+    const controlsH = document.getElementById('gamepad-area').style.display === 'flex' ? 240 : 0;
     const availW = window.innerWidth;
     const availH = window.innerHeight - controlsH;
-
     if (availH < 0) return; 
-
     const scale = Math.min(availW / CONFIG.WIDTH, availH / CONFIG.HEIGHT);
+    
+    const vp = document.getElementById('game-viewport');
+    vp.style.width = (CONFIG.WIDTH * scale) + "px";
+    vp.style.height = (CONFIG.HEIGHT * scale) + "px";
     
     canvas.width = CONFIG.WIDTH; 
     canvas.height = CONFIG.HEIGHT;
-    canvas.style.width = (CONFIG.WIDTH * scale) + "px";
-    canvas.style.height = (CONFIG.HEIGHT * scale) + "px";
-    
     ctx.imageSmoothingEnabled = false;
 }
 
-// --- LÓGICA JUEGO ---
-function startGame() {
-    const room = document.getElementById('roomInput').value;
-    if(!room) return;
-    document.getElementById('btnPlay').disabled = true;
-    document.getElementById('btnPlay').innerText = "...";
-    net.connect(room.toUpperCase());
-}
-
-function getSpawnInfo(id) {
-    // ID 1: Azul (Top-Left)
-    // ID 2: Rojo (Bottom-Right)
-    // ID 3: Verde (Top-Right)
-    // ID 4: Amarillo (Bottom-Left)
-    const colors = { 1: '#3498db', 2: '#e74c3c', 3: '#2ecc71', 4: '#f1c40f' };
-    const x = (id===1 || id===4) ? 1 : CONFIG.COLS - 2;
-    const y = (id===1 || id===3) ? 1 : CONFIG.ROWS - 2;
-    return { c: colors[id] || '#fff', x: x, y: y };
-}
-
-function onConnected(id) {
-    document.getElementById('ui-layer').style.display = 'none';
-    document.getElementById('hud').style.display = 'flex';
-    
-    // Mostrar scoreboards relevantes
-    for(let i=1; i<=4; i++) {
-        document.getElementById(`p${i}-score`).style.display = 'block';
-    }
-
-    net.id = id;
-    const info = getSpawnInfo(id);
-    state.localPlayer = new Player(id, info.x, info.y, info.c);
-}
-
-function onPeerJoin(id) {
-    log(`JUGADOR ${id} SE UNIÓ`);
-    if(!state.players[id]) {
-        const info = getSpawnInfo(id);
-        state.players[id] = new Player(id, info.x, info.y, info.c);
-    }
-    // Host sincroniza mapa con nuevos
-    if(net.id === 1) net.send({ t:'map', grid: mapGrid });
-}
-
-function onPeerLeft(id) {
-    log(`JUGADOR ${id} SALIÓ`);
-    delete state.players[id];
-}
-
-function onNetData(d, peerId) {
-    // Si recibimos datos de movimiento, actualizamos al player correspondiente
-    const targetId = d.id || peerId; // Usar ID del paquete o del canal
-    const p = state.players[targetId];
-
-    if (d.t === 'm') {
-        if(!p) {
-            // Si no existe el player remoto (ej: entramos tarde), lo creamos
-            const info = getSpawnInfo(targetId);
-            state.players[targetId] = new Player(targetId, info.x, info.y, info.c);
-            return;
-        }
-        p.x = d.x; p.y = d.y;
-        p.targetX = d.tx; p.targetY = d.ty;
-        p.isMoving = true;
-    }
-    if (d.t === 'b') createBomb(d.c, d.r, d.oid);
-    if (d.t === 'map') mapGrid = d.grid;
-    if (d.t === 'respawn' && p) p.reset();
-}
-
-function gameLoop() {
-    state.frame++; update(); draw(); requestAnimationFrame(gameLoop);
-}
-
+function gameLoop() { state.frame++; update(); draw(); requestAnimationFrame(gameLoop); }
 function update() {
     if (state.localPlayer) state.localPlayer.update();
-    
-    // Actualizar todos los remotos
     for(let pid in state.players) {
-        const p = state.players[pid];
-        if (!p.isDead && p.isMoving) {
-            if (p.x < p.targetX) p.x += CONFIG.SPEED;
-            if (p.x > p.targetX) p.x -= CONFIG.SPEED;
-            if (p.y < p.targetY) p.y += CONFIG.SPEED;
-            if (p.y > p.targetY) p.y -= CONFIG.SPEED;
-            if (p.x === p.targetX && p.y === p.targetY) p.isMoving = false;
-        } else if (p.isDead) p.update(); 
+        state.players[pid].update(); 
     }
-
-    for (let i = bombs.length - 1; i >= 0; i--) {
-        const b = bombs[i];
-        if (b.update()) { explode(b); bombs.splice(i, 1); }
-    }
-    for (let i = explosions.length - 1; i >= 0; i--) {
-        if (explosions[i].update()) explosions.splice(i, 1);
-    }
+    for (let i = bombs.length - 1; i >= 0; i--) { const b = bombs[i]; if (b.update()) { explode(b); bombs.splice(i, 1); } }
+    for (let i = explosions.length - 1; i >= 0; i--) { if (explosions[i].update()) explosions.splice(i, 1); }
 }
-
 function draw() {
-    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#222"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     for(let r=0; r<CONFIG.ROWS; r++) {
         for(let c=0; c<CONFIG.COLS; c++) {
             const x = c*CONFIG.TILE; const y = r*CONFIG.TILE;
@@ -689,12 +780,9 @@ function draw() {
     }
     bombs.forEach(b => b.draw(ctx));
     explosions.forEach(e => e.draw(ctx));
-    
-    // Dibujar todos los players ordenados por Y
     const allPlayers = [];
     if(state.localPlayer) allPlayers.push(state.localPlayer);
     for(let pid in state.players) allPlayers.push(state.players[pid]);
-    
     allPlayers.sort((a,b) => a.y - b.y);
     allPlayers.forEach(p => p.draw(ctx));
 }
@@ -710,18 +798,27 @@ function setupInputs() {
         if(e.code==='Space') { if(state.localPlayer) state.localPlayer.placeBomb(); }
     };
     window.onkeyup = e => { if(['ArrowUp','w','ArrowDown','s','ArrowLeft','a','ArrowRight','d'].includes(e.key)) setDir(0,0); };
-    
     const btnAct = document.getElementById('action-btn');
-    btnAct.ontouchstart = e => { e.preventDefault(); if(state.localPlayer) state.localPlayer.placeBomb(); };
+    btnAct.addEventListener('touchstart', (e) => { 
+        e.preventDefault(); 
+        if(state.localPlayer) state.localPlayer.placeBomb(); 
+    }, {passive:false});
     bindTouch('btn-up',0,-1); bindTouch('btn-down',0,1); bindTouch('btn-left',-1,0); bindTouch('btn-right',1,0);
 }
 function bindTouch(id, x, y) {
     const el = document.getElementById(id);
-    el.ontouchstart = e => { e.preventDefault(); state.input.x=x; state.input.y=y; state.input.active=true; };
-    el.ontouchend = e => { e.preventDefault(); state.input.active=false; };
+    el.addEventListener('touchstart', (e) => { 
+        e.preventDefault(); 
+        state.input.x=x; state.input.y=y; state.input.active=true; 
+        el.style.opacity = "0.6";
+    }, {passive:false});
+    el.addEventListener('touchend', (e) => { 
+        e.preventDefault(); 
+        state.input.active=false; 
+        el.style.opacity = "1";
+    });
 }
-function log(t) { document.getElementById('status-log').innerText = t; }
-window.onload = init;
+function log(t) { if(document.getElementById('login-log')) document.getElementById('login-log').innerText = t; }
 </script>
 </body>
 </html>
