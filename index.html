@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bombardo v3.1</title>
+    <title>Bombardo v3.5</title>
     <style>
         /* --- LAYOUT PRINCIPAL --- */
         body {
@@ -60,11 +60,13 @@
             background: #333; padding: 10px; border: 2px solid #555; 
             color: #777; font-size: 12px; font-weight: bold; 
         }
-        .player-slot.active { border-color: #fff; color: #fff; }
-        .player-slot.p1.active { background: #3498db; }
-        .player-slot.p2.active { background: #e74c3c; }
-        .player-slot.p3.active { background: #2ecc71; }
-        .player-slot.p4.active { background: #f1c40f; }
+        .player-slot.active { border-color: #fff; color: #fff; text-shadow: 1px 1px 0 #000; }
+        
+        /* COLORES DE UI ACTUALIZADOS - Paleta de Jugadores */
+        .player-slot.p1.active { background: #ac3232; } /* Rojo Original */
+        .player-slot.p2.active { background: #3498db; } /* Azul */
+        .player-slot.p3.active { background: #f1c40f; } /* Amarillo */
+        .player-slot.p4.active { background: #9b59b6; } /* Morado */
 
         /* HUD JUEGO */
         #hud { 
@@ -77,8 +79,13 @@
             font-weight: bold; border: 1px solid rgba(255,255,255,0.3); 
             font-size: 12px; text-shadow: 1px 1px 0 #000; margin: 2px; 
         }
-        #p1-score { color: #3498db; } #p2-score { color: #e74c3c; } 
-        #p3-score { color: #2ecc71; } #p4-score { color: #f1c40f; }
+        
+        /* COLORES HUD ACTUALIZADOS */
+        #p1-score { color: #ac3232; } 
+        #p2-score { color: #3498db; } 
+        #p3-score { color: #f1c40f; } 
+        #p4-score { color: #9b59b6; }
+        #timer-box { color: #fff; border-color: #f1c40f; min-width: 60px; text-align: center; }
         
         /* OVERLAY GAME OVER */
         #game-over-overlay {
@@ -106,11 +113,6 @@
         
         .d-pad { position: relative; width: 180px; height: 180px; }
         
-        /* AJUSTE DE BOTONES UI:
-           Escala 2x para los botones de flecha (32px -> 64px).
-           Sheet original: 224x128. Scaled 2x: 448px 256px.
-           Flecha (Up): Tile 2,3 (x=64, y=96) -> Scaled: 128, 192 -> Pos: -128px -192px.
-        */
         .arrow-btn { 
             width: 64px; height: 64px; 
             background-size: 448px 256px; 
@@ -127,11 +129,6 @@
             display: flex; justify-content: center; align-items: center; margin-top: 20px; 
         }
         
-        /* AJUSTE DE BOTÓN BOMBA:
-           Escala 2.5x para llenar el botón de 80px (32px * 2.5 = 80px).
-           Sheet Scaled 2.5x: 560px 320px.
-           Bomba: Tile 2,1 (x=64, y=32) -> Scaled: 160, 80 -> Pos: -160px -80px.
-        */
         #action-btn { 
             position: relative; width: 80px; height: 80px; 
             background-size: 560px 320px;
@@ -151,6 +148,7 @@
         
         <!-- HUD JUEGO -->
         <div id="hud" style="display:none;">
+            <div id="timer-box" class="score-box">120</div>
             <div id="p1-score" class="score-box">P1: 0</div>
             <div id="p2-score" class="score-box">P2: 0</div>
             <div id="p3-score" class="score-box" style="display:none;">P3: 0</div>
@@ -160,7 +158,7 @@
         <!-- GAME OVER OVERLAY -->
         <div id="game-over-overlay" style="display:none;">
             <h1 id="winner-text" style="font-size: 40px; color: #f1c40f;">GANADOR P1</h1>
-            <p style="color: white; margin-top:0;">Llegó a 3 puntos</p>
+            <p id="winner-reason" style="color: white; margin-top:0;">Llegó a 3 puntos</p>
             <button onclick="location.reload()" style="width: auto; padding: 10px 30px;">REINICIAR</button>
         </div>
 
@@ -218,7 +216,8 @@ const CONFIG = {
     SPEED: 2, 
     BRICK_DENSITY: 0.6, 
     BOMB_RANGE: 2, MAX_BOMBS: 2,
-    WIN_SCORE: 3 // Puntos para ganar
+    WIN_SCORE: 3, // Puntos para ganar
+    ROUND_TIME: 120 // Segundos totales
 };
 
 const SPRITES = {
@@ -270,7 +269,8 @@ const state = {
     frame: 0,
     scores: { 1:0, 2:0, 3:0, 4:0 },
     processingDeath: false,
-    winner: null
+    winner: null,
+    timeLeft: CONFIG.ROUND_TIME
 };
 
 // --- RED ---
@@ -358,15 +358,17 @@ class Net {
             if(p.ch && p.ch.readyState==='open') p.ch.send(msg);
         }
     }
+    
+    broadcast(d) { this.send(d); }
 }
 
 // --- JUEGO (CLASES) ---
 class Player {
-    constructor(id, col, row, colorTint) {
-        this.id = id; this.tint = colorTint;
+    constructor(id, col, row) {
+        this.id = id;
         this.spawnX = col * CONFIG.TILE; this.spawnY = row * CONFIG.TILE;
         this.activeBombs = 0;
-        this.sentIdlePacket = true; // Control para no floodear red al estar quieto
+        this.sentIdlePacket = true;
         this.reset();
     }
     reset() {
@@ -381,7 +383,7 @@ class Player {
         if(this.isDead) return; 
         this.isDead = true; 
         this.animState = 'DIE'; 
-        this.deadTimer = 90; // 1.5 segundos muerte
+        this.deadTimer = 90; 
     }
     update() {
         if (this.isDead) {
@@ -395,7 +397,6 @@ class Player {
         }
 
         if (this.isMoving) {
-            // Local visual smoothing
             if (this.id === net.id) {
                 if (this.targetY > this.y) this.animState = 'WALK_DOWN';
                 else if (this.targetY < this.y) this.animState = 'WALK_UP';
@@ -413,7 +414,6 @@ class Player {
                 this.checkInput();
             }
         } else {
-            // Idle states
             if (this.id === net.id) {
                 if (this.animState === 'WALK_DOWN') this.animState = 'IDLE_DOWN';
                 if (this.animState === 'WALK_UP') this.animState = 'IDLE_UP';
@@ -439,9 +439,8 @@ class Player {
             this.targetX = nextCol * CONFIG.TILE;
             this.targetY = nextRow * CONFIG.TILE;
             this.isMoving = true;
-            this.sentIdlePacket = false; // Nos movemos, así que necesitaremos enviar Idle luego
+            this.sentIdlePacket = false; 
 
-            // Determinar animación futura
             let nextAnim = this.animState;
             let facing = this.facingLeft;
             if(state.input.y > 0) nextAnim = 'WALK_DOWN';
@@ -449,7 +448,6 @@ class Player {
             else if(state.input.x > 0) { nextAnim = 'WALK_SIDE'; facing = false; }
             else if(state.input.x < 0) { nextAnim = 'WALK_SIDE'; facing = true; }
             
-            // ENVIAR MOVIMIENTO
             net.send({ 
                 t:'m', 
                 tx:this.targetX, ty:this.targetY, 
@@ -459,9 +457,7 @@ class Player {
                 f: facing    
             });
         } else {
-            // FIX IDLE SYNC: Si acabamos de dejar de movernos y no hemos enviado paquete
             if (!this.sentIdlePacket) {
-                // Calcular estado idle
                 let idleAnim = this.animState;
                 if(idleAnim.startsWith('WALK_DOWN')) idleAnim = 'IDLE_DOWN';
                 if(idleAnim.startsWith('WALK_UP')) idleAnim = 'IDLE_UP';
@@ -469,7 +465,6 @@ class Player {
                 
                 this.animState = idleAnim;
 
-                // Enviar paquete IDLE una sola vez
                 net.send({ 
                     t:'m', 
                     tx:this.x, ty:this.y, 
@@ -506,15 +501,26 @@ class Player {
         const drawX = this.x; const drawY = this.y - 8; 
         
         ctx.save();
+
+        // APLICAR FILTRO DE COLOR SEGÚN ID
+        if(this.id === 2) ctx.filter = 'hue-rotate(210deg) brightness(1.2)'; // Azul
+        else if(this.id === 3) ctx.filter = 'hue-rotate(60deg) brightness(1.5)'; // Amarillo
+        else if(this.id === 4) ctx.filter = 'hue-rotate(290deg) brightness(1.1)'; // Morado
+        // P1 (y errores) se quedan sin filtro (Rojo Original)
+
         if (this.facingLeft) {
             ctx.translate(drawX + CONFIG.TILE, drawY);
             ctx.scale(-1, 1);
             drawSprite(ctx, coords, 0, 0);
         } else drawSprite(ctx, coords, drawX, drawY);
+        
         ctx.restore();
 
         if (!this.isDead) {
-            ctx.fillStyle = this.tint;
+            // Triángulo indicador
+            const colors = { 1:'#ac3232', 2:'#3498db', 3:'#f1c40f', 4:'#9b59b6' };
+            ctx.fillStyle = colors[this.id] || '#fff';
+            
             ctx.beginPath();
             ctx.moveTo(this.x + 16, this.y - 12);
             ctx.lineTo(this.x + 12, this.y - 18);
@@ -577,19 +583,31 @@ function updateScore(killerId, victimId) {
 }
 
 function checkWinCondition() {
+    // 1. Victoria por Puntos
     for(let pid in state.scores) {
         if(state.scores[pid] >= CONFIG.WIN_SCORE) {
-            state.winner = pid;
-            document.getElementById('game-over-overlay').style.display = 'flex';
-            document.getElementById('winner-text').innerText = `GANADOR P${pid}`;
+            endGame(pid, `Llegó a ${CONFIG.WIN_SCORE} puntos`);
+            return;
         }
     }
+}
+
+function endGame(winnerId, reason) {
+    state.winner = winnerId;
+    document.getElementById('game-over-overlay').style.display = 'flex';
+    document.getElementById('winner-text').innerText = `GANADOR P${winnerId}`;
+    document.getElementById('winner-reason').innerText = reason;
 }
 
 function updateHUD() {
     for(let i=1; i<=4; i++) {
         const el = document.getElementById(`p${i}-score`);
         if(el) el.innerText = `P${i}: ${state.scores[i] || 0}`;
+    }
+    const timerEl = document.getElementById('timer-box');
+    if(timerEl) {
+        timerEl.innerText = state.timeLeft;
+        timerEl.style.color = state.timeLeft < 10 ? '#e74c3c' : '#fff';
     }
 }
 
@@ -648,6 +666,7 @@ function updateLobbyUI(id, connected) {
 function hostStartGame() {
     if(net.id !== 1) return;
     generateMap();
+    state.timeLeft = CONFIG.ROUND_TIME; // Reset Time
     net.send({ t:'start', grid:mapGrid });
     beginGameLoop();
 }
@@ -664,6 +683,7 @@ function beginGameLoop() {
 
 function onNetData(d, peerId) {
     const targetId = d.id || peerId;
+    
     if (state.status === 'LOBBY') {
         if(d.t === 'start') {
             mapGrid = d.grid;
@@ -674,7 +694,26 @@ function onNetData(d, peerId) {
         }
         return;
     }
+    
     if (state.status === 'GAME') {
+        // EVENTOS GLOBALES (Sin player específico necesario)
+        if (d.t === 'tick') {
+            state.timeLeft = d.time;
+            updateHUD();
+            return;
+        }
+        if (d.t === 'game_over') {
+            endGame(d.winner, "¡Tiempo Agotado!");
+            return;
+        }
+        if (d.t === 'reset_round') {
+            mapGrid = d.grid;
+            if(state.localPlayer) state.localPlayer.reset();
+            for(let k in state.players) state.players[k].reset();
+            return;
+        }
+
+        // EVENTOS DE JUGADOR
         let p = state.players[targetId];
         if (d.t === 'm') {
             if(!p) {
@@ -685,23 +724,19 @@ function onNetData(d, peerId) {
             p.x = d.x; p.y = d.y;
             p.targetX = d.tx; p.targetY = d.ty;
             p.isMoving = true;
-            
-            // SYNC VISUAL: Aplicar animación recibida por red
             if(d.a) p.animState = d.a;
             if(typeof d.f !== 'undefined') p.facingLeft = d.f;
         }
         if (d.t === 'b') createBomb(d.c, d.r, d.oid);
-        if (d.t === 'map') mapGrid = d.grid;
         if (d.t === 'respawn' && p) p.reset();
     }
 }
 
 // --- HELPERS ---
 function getSpawnInfo(id) {
-    const colors = { 1: '#3498db', 2: '#e74c3c', 3: '#2ecc71', 4: '#f1c40f' };
     const x = (id===1 || id===4) ? 1 : CONFIG.COLS - 2;
     const y = (id===1 || id===3) ? 1 : CONFIG.ROWS - 2;
-    return { c: colors[id] || '#fff', x: x, y: y };
+    return { x: x, y: y };
 }
 
 function generateMap() {
@@ -742,6 +777,22 @@ function explode(bomb) {
     });
 }
 
+function checkMapReset() {
+    let hasBricks = false;
+    for(let r=0; r<CONFIG.ROWS; r++) {
+        for(let c=0; c<CONFIG.COLS; c++) {
+            if(mapGrid[r][c] === TILE_TYPE.BRICK) { hasBricks = true; break; }
+        }
+    }
+    if(!hasBricks) {
+        // RESET ROUND
+        generateMap();
+        if(state.localPlayer) state.localPlayer.reset();
+        for(let k in state.players) state.players[k].reset();
+        net.broadcast({t:'reset_round', grid:mapGrid});
+    }
+}
+
 function resizeViewport() {
     const controlsH = document.getElementById('gamepad-area').style.display === 'flex' ? 240 : 0;
     const availW = window.innerWidth;
@@ -758,15 +809,51 @@ function resizeViewport() {
     ctx.imageSmoothingEnabled = false;
 }
 
-function gameLoop() { state.frame++; update(); draw(); requestAnimationFrame(gameLoop); }
+function gameLoop() { 
+    state.frame++; 
+    if(state.status === 'GAME') {
+        update(); 
+        draw(); 
+        
+        // HOST LOGIC (Timer & Map Check)
+        if(net.id === 1 && !state.winner) {
+            if(state.frame % 60 === 0) { // Approx 1 sec
+                state.timeLeft--;
+                updateHUD(); // <--- ADD THIS LINE so Host sees the update
+                net.broadcast({t:'tick', time: state.timeLeft});
+                if(state.timeLeft <= 0) {
+                    // Calc winner by points
+                    let maxP = -1, winner = null;
+                    for(let pid in state.scores) {
+                        if(state.scores[pid] > maxP) { maxP = state.scores[pid]; winner = pid; }
+                        else if(state.scores[pid] === maxP) winner = "EMPATE"; // Simple tie check
+                    }
+                    if(winner === "EMPATE") winner = null; // O mostrar empate
+                    net.broadcast({t:'game_over', winner: winner || 1});
+                    endGame(winner || 1, "¡Tiempo Agotado!");
+                }
+            }
+        }
+    }
+    requestAnimationFrame(gameLoop); 
+}
+
 function update() {
     if (state.localPlayer) state.localPlayer.update();
-    for(let pid in state.players) {
-        state.players[pid].update(); 
+    for(let pid in state.players) state.players[pid].update(); 
+    
+    for (let i = bombs.length - 1; i >= 0; i--) { 
+        const b = bombs[i]; 
+        if (b.update()) { 
+            explode(b); 
+            bombs.splice(i, 1);
+            // Si soy Host, chequear si el mapa se vació tras explosiones
+            if(net.id === 1) checkMapReset(); 
+        } 
     }
-    for (let i = bombs.length - 1; i >= 0; i--) { const b = bombs[i]; if (b.update()) { explode(b); bombs.splice(i, 1); } }
     for (let i = explosions.length - 1; i >= 0; i--) { if (explosions[i].update()) explosions.splice(i, 1); }
 }
+
 function draw() {
     ctx.fillStyle = "#222"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     for(let r=0; r<CONFIG.ROWS; r++) {
