@@ -14,15 +14,6 @@
             user-select: none; -webkit-user-select: none;
         }
 
-        /* --- PUBLICIDAD --- */
-        #ad-container {
-            width: 100%; max-width: 728px; min-height: 90px; 
-            background-color: #1a1a1a; margin-bottom: 5px;
-            display: flex; justify-content: center; align-items: center;
-            border-bottom: 1px solid #333; box-sizing: border-box; flex-shrink: 0; overflow: hidden;
-        }
-        @media (max-height: 600px) { #ad-container { display: none; } }
-
         /* --- HUD --- */
         #hud-container {
             width: 100%; max-width: 480px; display: none; flex-direction: column; margin-bottom: 4px;
@@ -150,13 +141,6 @@
     </style>
 </head>
 <body>
-
-    <div id="ad-container">
-        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4325671609150427" crossorigin="anonymous"></script>
-        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-4325671609150427" data-ad-slot="2531602052" data-ad-format="auto" data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-    </div>
-
     <div id="hud-container">
         <div id="hud">
             <div id="timer-box" class="score-box">120</div>
