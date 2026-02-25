@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bombardo v5.3</title>
+    <title>Bombardo v6.0</title>
     <style>
         /* --- LAYOUT PRINCIPAL --- */
         body {
@@ -166,7 +166,7 @@
         <div id="screen-loading" class="screen-layer"><h1 style="color:white;">CARGANDO...</h1></div>
         <div id="screen-login" class="screen-layer" style="display:none;">
             <div class="panel">
-                <h1>Bombardo!💣 (v5.3)</h1>
+                <h1>Bombardo!💣 (v6.0)</h1>
                 <div style="font-size:10px; margin-bottom:10px; color:#ccc;">Desarrollado por: Steven Arias</div>
                 <input type="text" id="roomInput" placeholder="ID SALA" value="TEST" maxlength="6">
                 <button id="btnConnect" onclick="connectToServer()">CONECTAR</button>
@@ -239,7 +239,6 @@ const SPRITES={
     BOMB_IDLE:[{x:0,y:2},{x:1,y:2}],EXPLOSION_ANIM:[{x:3,y:4},{x:4,y:4}], // D5, E5
     CHAR:{IDLE_DOWN:[{x:3,y:0}],WALK_DOWN:[{x:4,y:0},{x:3,y:0},{x:5,y:0}],IDLE_SIDE:[{x:6,y:0}],WALK_SIDE:[{x:3,y:1},{x:4,y:1},{x:5,y:1}],IDLE_UP:[{x:3,y:2}],WALK_UP:[{x:4,y:2},{x:3,y:2},{x:5,y:2}],DIE:[{x:6,y:2},{x:3,y:3},{x:4,y:3},{x:5,y:3}]}
 };
-const ICE_SERVERS={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'}],iceCandidatePoolSize:10};
 const PALETTE=[{name:'Red',hex:'#ac3232',filter:'none'},{name:'Blue',hex:'#3498db',filter:'hue-rotate(210deg) brightness(1.2)'},{name:'Green',hex:'#2ecc71',filter:'hue-rotate(120deg) brightness(1.2)'},{name:'Yellow',hex:'#f1c40f',filter:'hue-rotate(60deg) brightness(1.5)'},{name:'Purple',hex:'#9b59b6',filter:'hue-rotate(290deg) brightness(1.1)'},{name:'Cyan',hex:'#00cec9',filter:'hue-rotate(180deg) brightness(1.3)'}];
 const assets={spritesheet:new Image(),coloredSheets:[],loaded:false};
 function loadAssets(){assets.spritesheet.src='sprites.png';assets.spritesheet.onload=()=>{generateColoredSprites();assets.loaded=true;console.log("OK");showLoginScreen();};assets.spritesheet.onerror=()=>{console.warn("Err");assets.loaded=false;showLoginScreen();};}
@@ -274,7 +273,7 @@ function renderLobbySlots(){
     for(let i=1;i<=4;i++){
         const s=document.getElementById(`slot-${i}`),d=s.querySelector('.status-dot'),p=state.lobbyPlayers[i];
         d.className='status-dot'; s.className='player-slot '+(i===1?'p1':(i===2?'p2':(i===3?'p3':'p4')));
-        if(p){s.classList.add('active');s.childNodes[0].nodeValue=`${p.name} ${i===1?'(HOST)':''}`;const c=PALETTE[p.colorIdx]||PALETTE[0];s.style.backgroundColor=c.hex;s.style.color=(p.colorIdx===3||p.colorIdx===5)?'#000':'#fff';if(p.isReady||i===1)s.classList.add('ready');else s.classList.remove('ready');if(i===net.id||(net.peers[i]&&net.peers[i].rtc.connectionState==='connected'))d.classList.add('connected');}
+        if(p){s.classList.add('active');s.childNodes[0].nodeValue=`${p.name} ${i===1?'(HOST)':''}`;const c=PALETTE[p.colorIdx]||PALETTE[0];s.style.backgroundColor=c.hex;s.style.color=(p.colorIdx===3||p.colorIdx===5)?'#000':'#fff';if(p.isReady||i===1)s.classList.add('ready');else s.classList.remove('ready');d.classList.add('connected');}
         else{s.classList.remove('active','ready');s.style.backgroundColor='#333';s.style.color='#777';s.childNodes[0].nodeValue=`P${i}: ...`;}
     }
     for(let i=1;i<=4;i++){const p=state.lobbyPlayers[i],e=document.getElementById(`p${i}-score`);if(p){e.innerText=`${p.name}: ${state.scores[i]||0}`;e.style.color=PALETTE[p.colorIdx].hex;}else e.style.display='none';}
@@ -282,28 +281,18 @@ function renderLobbySlots(){
 function updateStatsUI(){if(!state.localPlayer)return;document.getElementById('stat-bomb').innerText=state.localPlayer.stats.maxBombs;document.getElementById('stat-fire').innerText=state.localPlayer.stats.range;document.getElementById('stat-speed').innerText=state.localPlayer.stats.speed;}
 
 class Net{
-    constructor(){this.ws=null;this.id=0;this.peers={};}
-    connect(r){log("Conectando...");this.ws=new WebSocket('wss://bomber-server.onrender.com');this.ws.onopen=()=>{log("WS OK");this.ws.send(JSON.stringify({type:'join',room:r}));};this.ws.onmessage=e=>this.handle(JSON.parse(e.data));this.ws.onerror=()=>log("Error WS");}
-    async handle(m){
+    constructor(){this.ws=null;this.id=0;}
+    connect(r){log("Conectando...");this.ws=new WebSocket('wss://mi-bombardo-server.onrender.com');this.ws.onopen=()=>{log("WS OK");this.ws.send(JSON.stringify({type:'join',room:r}));};this.ws.onmessage=e=>this.handle(JSON.parse(e.data));this.ws.onerror=()=>log("Error WS");}
+    handle(m){
         switch(m.type){
             case 'id':this.id=m.id;if(!myProfile.name){myProfile.name=`P${m.id}`;document.getElementById('my-name-input').value=myProfile.name;}myProfile.colorIdx=(m.id-1)%PALETTE.length;if(m.id===1){document.getElementById('btnReady').style.display='none';document.getElementById('host-settings').style.display='block';}enterLobby(m.id);break;
-            case 'peer_connected':this.initRTC(m.id,true);break;
-            case 'offer':if(!this.peers[m.origin])this.initRTC(m.origin,false);await this.peers[m.origin].rtc.setRemoteDescription(m.sdp);if(this.peers[m.origin].pendingCandidates){for(let c of this.peers[m.origin].pendingCandidates)await this.peers[m.origin].rtc.addIceCandidate(c);this.peers[m.origin].pendingCandidates=[];}setTimeout(async()=>{const a=await this.peers[m.origin].rtc.createAnswer();await this.peers[m.origin].rtc.setLocalDescription(a);this.sig({type:'answer',sdp:a,target:m.origin});},500);break;
-            case 'answer':if(this.peers[m.origin])await this.peers[m.origin].rtc.setRemoteDescription(m.sdp);break;
-            case 'candidate':if(this.peers[m.origin]){const p=this.peers[m.origin];if(p.rtc.remoteDescription)await p.rtc.addIceCandidate(m.candidate);else{if(!p.pendingCandidates)p.pendingCandidates=[];p.pendingCandidates.push(m.candidate);}}break;
+            case 'user_joined':if(this.id===1)this.send({t:'lobby_sync_full',list:state.lobbyPlayers});break;
+            case 'user_left':delete state.lobbyPlayers[m.id];delete state.players[m.id];renderLobbySlots();updatePaletteUI();break;
+            case 'data':onNetData(m.data, m.from);break;
         }
     }
-    sig(d){if(this.ws)this.ws.send(JSON.stringify(d));}
-    initRTC(peerId,offerer){
-        const rtc=new RTCPeerConnection(ICE_SERVERS);this.peers[peerId]={rtc:rtc,ch:null,pendingCandidates:[]};
-        rtc.onicecandidate=e=>{if(e.candidate)this.sig({type:'candidate',candidate:e.candidate,target:peerId});};
-        rtc.onconnectionstatechange=()=>{if(rtc.connectionState==='disconnected'){delete state.lobbyPlayers[peerId];renderLobbySlots();updatePaletteUI();}renderLobbySlots();};
-        if(offerer){const ch=rtc.createDataChannel("game",{ordered:false});this.peers[peerId].ch=ch;this.setupCh(ch,peerId);rtc.createOffer().then(o=>{rtc.setLocalDescription(o);this.sig({type:'offer',sdp:o,target:peerId});});}
-        else{rtc.ondatachannel=e=>{this.peers[peerId].ch=e.channel;this.setupCh(e.channel,peerId);};}
-    }
-    setupCh(ch,peerId){ch.onmessage=e=>onNetData(JSON.parse(e.data),peerId);ch.onopen=()=>{sendProfileUpdate();if(this.id===1)this.send({t:'lobby_sync_full',list:state.lobbyPlayers});};}
-    send(d){const msg=JSON.stringify(d);for(let pid in this.peers){const p=this.peers[pid];if(p.ch&&p.ch.readyState==='open')p.ch.send(msg);}}
-    broadcast(d){this.send(d);} // FIX: Función broadcast agregada
+    send(d){if(this.ws&&this.ws.readyState===WebSocket.OPEN)this.ws.send(JSON.stringify({type:'data',data:d}));}
+    broadcast(d){this.send(d);}
 }
 
 class Player{
@@ -326,7 +315,7 @@ class Player{
         const itIdx=items.findIndex(i=>i.c===myC&&i.r===myR&&!i.hidden);
         if(itIdx!==-1){
             const it=items[itIdx]; if(it.type===ITEM_TYPE.FIRE)this.stats.range++; if(it.type===ITEM_TYPE.BOMB)this.stats.maxBombs++; if(it.type===ITEM_TYPE.SPEED&&this.stats.speed<4)this.stats.speed+=0.5;
-            updateStatsUI(); net.send({t:'pickup',idx:itIdx,id:this.id}); items.splice(itIdx,1);
+            updateStatsUI(); net.send({t:'pickup',idx:itIdx,id:this.id}); items.splice(itIdx,1); playSound('item');
         }
         if(state.input.active){
             let col=Math.round(this.x/CONFIG.TILE),row=Math.round(this.y/CONFIG.TILE),nextCol=col+state.input.x,nextRow=row+state.input.y;
@@ -350,7 +339,7 @@ class Player{
         if(this.isDead||this.activeBombs>=this.stats.maxBombs||state.winner)return;
         const c=Math.round(this.x/CONFIG.TILE),r=Math.round(this.y/CONFIG.TILE);
         if(mapGrid[r][c].type===TILE_TYPE.BOMB)return;if(bombs.some(b=>b.col===c&&b.row===r))return;
-        createBomb(c,r,this.id,this.stats.range);this.activeBombs++;net.send({t:'b',c:c,r:r,oid:this.id,rng:this.stats.range});
+        createBomb(c,r,this.id,this.stats.range);this.activeBombs++;net.send({t:'b',c:c,r:r,oid:this.id,rng:this.stats.range}); playSound('bomb');
     }
     draw(ctx){
         if(this.isDead&&this.deadTimer<=0)return;
@@ -390,7 +379,7 @@ function hostStartGame(){
     state.timeLeft=CONFIG.ROUND_TIME; net.broadcast({t:'start',grid:mapGrid,lvl:currentLevel,items:items}); beginGameLoop();
 }
 function beginGameLoop(){
-    state.status='GAME';document.getElementById('screen-lobby').style.display='none';document.getElementById('hud-container').style.display='flex';document.getElementById('hud').style.display='flex';for(let i=1;i<=4;i++)document.getElementById(`p${i}-score`).style.display='block';
+    state.status='GAME';document.getElementById('screen-lobby').style.display='none';document.getElementById('hud-container').style.display='flex';document.getElementById('hud').style.display='flex';for(let i=1;i<=4;i++)document.getElementById(`p${i}-score`).style.display='block'; playSound('start');
     const i=getSpawnInfo(net.id), d=state.lobbyPlayers[net.id]||{name:`P${net.id}`,colorIdx:0}; state.localPlayer=new Player(net.id,i.x,i.y,d.name,d.colorIdx);
     for(let p in state.lobbyPlayers){const pid=parseInt(p);if(pid!==net.id){const pi=getSpawnInfo(pid),pd=state.lobbyPlayers[pid];state.players[pid]=new Player(pid,pi.x,pi.y,pd.name,pd.colorIdx);}}
     updateStatsUI();
@@ -404,10 +393,10 @@ function onNetData(d,pid){
         if(d.t==='tick'){state.timeLeft=d.time;updateHUD();return;}
         if(d.t==='game_over'){const n=state.lobbyPlayers[d.winner]?.name||`P${d.winner}`;endGame(n,"¡Tiempo!");return;}
         if(d.t==='reset_round'){mapGrid=d.grid;currentLevel=d.lvl;items=d.items;if(state.localPlayer)state.localPlayer.reset();for(let k in state.players)state.players[k].reset();return;}
-        if(d.t==='pickup'){items.splice(d.idx,1);}
+        if(d.t==='pickup'){items.splice(d.idx,1); playSound('item');}
         let p=state.players[tid];
         if(d.t==='m'){if(!p){const i=getSpawnInfo(tid),pd=state.lobbyPlayers[tid]||{name:`P${tid}`,colorIdx:0};state.players[tid]=new Player(tid,i.x,i.y,pd.name,pd.colorIdx);p=state.players[tid];}p.x=d.x;p.y=d.y;p.targetX=d.tx;p.targetY=d.ty;p.isMoving=true;if(d.a)p.animState=d.a;if(d.f!==undefined)p.facingLeft=d.f;if(d.s)p.stats.speed=d.s;}
-        if(d.t==='b')createBomb(d.c,d.r,d.oid,d.rng);
+        if(d.t==='b'){createBomb(d.c,d.r,d.oid,d.rng); playSound('bomb');}
         if(d.t==='respawn'&&p)p.reset();
     }
 }
@@ -420,7 +409,7 @@ function createBomb(c,r,o,rng){mapGrid[r][c].type=TILE_TYPE.BOMB;bombs.push(new 
 function explode(b){
     const cc=b.col,cr=b.row;if(state.localPlayer&&state.localPlayer.id===b.ownerId)state.localPlayer.activeBombs--;else if(state.players[b.ownerId])state.players[b.ownerId].activeBombs--;
     mapGrid[cr][cc].type=TILE_TYPE.EMPTY;explosions.push(new Explosion(cc,cr,b.ownerId,'center'));
-    const dirs=[{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
+    const dirs=[{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}]; playSound('exp');
     dirs.forEach(d=>{for(let i=1;i<=b.range;i++){const nc=cc+d.x*i,nr=cr+d.y*i;if(nc<0||nr<0||nc>=CONFIG.COLS||nr>=CONFIG.ROWS)break;const t=mapGrid[nr][nc].type;if(t===TILE_TYPE.WALL)break;if(t===TILE_TYPE.BRICK){mapGrid[nr][nc].type=TILE_TYPE.EMPTY;const it=items.find(x=>x.c===nc&&x.r===nr);if(it)it.hidden=false;explosions.push(new Explosion(nc,nr,b.ownerId,'mid'));break;}else if(t===TILE_TYPE.BOMB){const ch=bombs.find(x=>x.col===nc&&x.row===nr&&!x.exploded);if(ch)ch.detonate();explosions.push(new Explosion(nc,nr,b.ownerId,'mid'));}else explosions.push(new Explosion(nc,nr,b.ownerId,'mid'));}});
 }
 function checkMapReset(){let h=false;for(let r=0;r<CONFIG.ROWS;r++)for(let c=0;c<CONFIG.COLS;c++)if(mapGrid[r][c].type===TILE_TYPE.BRICK){h=true;break;}if(!h){currentLevel=currentLevel===1?2:1;generateMap(0.25,[1,2,3]);if(state.localPlayer)state.localPlayer.reset();for(let k in state.players)state.players[k].reset();net.broadcast({t:'reset_round',grid:mapGrid,lvl:currentLevel,items:items});}}
@@ -445,6 +434,17 @@ function draw(){
 function setupInputs(){const set=(x,y)=>{state.input.x=x;state.input.y=y;state.input.active=(x!==0||y!==0);};window.onkeydown=e=>{if(e.repeat)return;if(['ArrowUp','w'].includes(e.key))set(0,-1);if(['ArrowDown','s'].includes(e.key))set(0,1);if(['ArrowLeft','a'].includes(e.key))set(-1,0);if(['ArrowRight','d'].includes(e.key))set(1,0);if(e.code==='Space'&&state.localPlayer)state.localPlayer.placeBomb();};window.onkeyup=e=>{if(['ArrowUp','w','ArrowDown','s','ArrowLeft','a','ArrowRight','d'].includes(e.key))set(0,0);};const b=document.getElementById('action-btn');b.addEventListener('touchstart',e=>{e.preventDefault();if(state.localPlayer)state.localPlayer.placeBomb();},{passive:false});bindTouch('btn-up',0,-1);bindTouch('btn-down',0,1);bindTouch('btn-left',-1,0);bindTouch('btn-right',1,0);}
 function bindTouch(id,x,y){const el=document.getElementById(id);el.addEventListener('touchstart',e=>{e.preventDefault();state.input.x=x;state.input.y=y;state.input.active=true;el.style.opacity="0.6";},{passive:false});el.addEventListener('touchend',e=>{e.preventDefault();state.input.active=false;el.style.opacity="1";});}
 function log(t){document.getElementById('login-log').innerText=t;}
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(t){
+    if(audioCtx.state==='suspended')audioCtx.resume();
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+    const now=audioCtx.currentTime;
+    if(t==='bomb'){o.frequency.setValueAtTime(600,now);o.frequency.exponentialRampToValueAtTime(100,now+0.1);g.gain.setValueAtTime(0.3,now);g.gain.exponentialRampToValueAtTime(0.01,now+0.1);o.start(now);o.stop(now+0.1);}
+    if(t==='exp'){o.type='sawtooth';o.frequency.setValueAtTime(100,now);o.frequency.exponentialRampToValueAtTime(10,now+0.3);g.gain.setValueAtTime(0.5,now);g.gain.exponentialRampToValueAtTime(0.01,now+0.3);o.start(now);o.stop(now+0.3);}
+    if(t==='item'){o.type='square';o.frequency.setValueAtTime(600,now);o.frequency.setValueAtTime(1200,now+0.1);g.gain.setValueAtTime(0.1,now);g.gain.linearRampToValueAtTime(0.01,now+0.2);o.start(now);o.stop(now+0.2);}
+    if(t==='start'){o.type='triangle';o.frequency.setValueAtTime(440,now);o.frequency.linearRampToValueAtTime(880,now+0.5);g.gain.setValueAtTime(0.3,now);g.gain.linearRampToValueAtTime(0.01,now+1);o.start(now);o.stop(now+1);}
+}
 </script>
 </body>
 </html>
