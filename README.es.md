@@ -1,6 +1,6 @@
 # **Bombardo 💣**
 
-**Juego Arcade Multijugador — Creado con HTML5, JavaScript y WebSockets** 🕹️
+**Bombardo v7.1 — Juego Arcade Multijugador** 🕹️
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-F7DF1E.svg?style=flat&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
@@ -21,6 +21,9 @@ Este proyecto demuestra la capacidad de crear experiencias multijugador sincroni
 
 ## **👾 Cómo Jugar**
 
+* **Modos de Juego** 🎮:
+  * **PvP (Multijugador)**: Batalla clásica de 2-4 jugadores. El último en pie gana.
+  * **Campaña (Cooperativo)**: 1-2 jugadores unen fuerzas para derrotar oleadas de IAs (Bots).
 * **Objetivo** 🏆:
   * Coloca bombas para destruir ladrillos y abrirte camino.
   * ¡Elimina a otros jugadores para ser el último en pie!
@@ -74,7 +77,6 @@ Este proyecto demuestra la capacidad de crear experiencias multijugador sincroni
 ## **💡 Mejoras Futuras**
 
 *   Más temas de mapas y obstáculos dinámicos.
-*   Sistema de chat en la sala de espera.
 *   Modo duelo por equipos.
 *   Sistema de cuentas para estadísticas persistentes.
 
