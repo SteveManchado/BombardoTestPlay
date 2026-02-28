@@ -76,11 +76,11 @@ class Player{
     update(){
         if(this.isDead){if(this.deadTimer>0)this.deadTimer--;else if(this.deadTimer===0){this.deadTimer=-1;this.reset();if(this.id===net.id)net.send({t:'respawn',id:this.id});}return;}
         if(this.isMoving){
-            if(this.id===net.id){if(this.targetY>this.y)this.animState='WALK_DOWN';else if(this.targetY<this.y)this.animState='WALK_UP';else if(this.targetX>this.x){this.animState='WALK_SIDE';this.facingLeft=false;}else if(this.targetX<this.x){this.animState='WALK_SIDE';this.facingLeft=true;}}
+            if(this.id===net.id || (this.id<0 && net.id===1)){if(this.targetY>this.y)this.animState='WALK_DOWN';else if(this.targetY<this.y)this.animState='WALK_UP';else if(this.targetX>this.x){this.animState='WALK_SIDE';this.facingLeft=false;}else if(this.targetX<this.x){this.animState='WALK_SIDE';this.facingLeft=true;}}
             const spd=this.stats.speed;
             if(this.x<this.targetX)this.x+=spd;if(this.x>this.targetX)this.x-=spd;if(this.y<this.targetY)this.y+=spd;if(this.y>this.targetY)this.y-=spd;
             if(Math.abs(this.x-this.targetX)<spd && Math.abs(this.y-this.targetY)<spd){this.x=this.targetX;this.y=this.targetY;this.isMoving=false;this.checkInput();}
-        }else{if(this.id===net.id){if(this.animState==='WALK_DOWN')this.animState='IDLE_DOWN';if(this.animState==='WALK_UP')this.animState='IDLE_UP';if(this.animState==='WALK_SIDE')this.animState='IDLE_SIDE';}this.checkInput();}
+        }else{if(this.id===net.id || (this.id<0 && net.id===1)){if(this.animState==='WALK_DOWN')this.animState='IDLE_DOWN';if(this.animState==='WALK_UP')this.animState='IDLE_UP';if(this.animState==='WALK_SIDE')this.animState='IDLE_SIDE';}this.checkInput();}
     }
     checkInput(){
         if(this.id!==net.id || state.winner)return;
@@ -129,12 +129,12 @@ class Player{
     }
 }
 class AIPlayer extends Player{
-    constructor(id,c,r){super(id,c,r,'BOT',6);this.aiTimer=0;this.currDir={x:0,y:0};}
+    constructor(id,c,r){super(id,c,r,'BOT',6);this.aiTimer=0;this.currDir={x:0,y:0};this.stats.speed=1.3;}
     checkInput(){
         if(this.isDead||state.winner||this.isMoving)return;
         this.aiTimer--;
         if(this.aiTimer<=0){
-            this.aiTimer=Math.floor(Math.random()*20+10);
+            this.aiTimer=Math.floor(Math.random()*30+30);
             const dirs=[{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
             this.currDir=dirs[Math.floor(Math.random()*dirs.length)];
             if(Math.random()<0.1) this.placeBomb();
@@ -149,6 +149,7 @@ class AIPlayer extends Player{
                     this.targetX=nextCol*CONFIG.TILE;this.targetY=nextRow*CONFIG.TILE;this.isMoving=true;this.sentIdlePacket=false;
                     let anim=this.animState,face=this.facingLeft;
                     if(dy>0)anim='WALK_DOWN';else if(dy<0)anim='WALK_UP';else if(dx>0){anim='WALK_SIDE';face=false;}else if(dx<0){anim='WALK_SIDE';face=true;}
+                    this.animState=anim; this.facingLeft=face;
                     net.broadcast({t:'m',tx:this.targetX,ty:this.targetY,x:this.x,y:this.y,id:this.id,a:anim,f:face,s:this.stats.speed});
                 }
             }
@@ -214,6 +215,7 @@ function onNetData(d,pid){
         if(d.t==='pickup'){items.splice(d.idx,1); playSound('item');}
         let p=state.players[tid];
         if(d.t==='m'){
+            if(tid===net.id)return;
             if(!p){
                 if(tid<0) state.players[tid]=new AIPlayer(tid,0,0); // Bot ghost
                 else {const i=getSpawnInfo(tid),pd=state.lobbyPlayers[tid]||{name:`P${tid}`,colorIdx:0};state.players[tid]=new Player(tid,i.x,i.y,pd.name,pd.colorIdx);}
@@ -234,9 +236,15 @@ function generateMap(den=0.6, allowed=[1,2,3], coop=false){
     for(let r=0;r<CONFIG.ROWS;r++){let row=[];for(let c=0;c<CONFIG.COLS;c++){let t={type:TILE_TYPE.EMPTY};if(r===0||c===0||r===CONFIG.ROWS-1||c===CONFIG.COLS-1||(r%2===0&&c%2===0))t.type=TILE_TYPE.WALL;else if((!coop && !safe(c,r)) || (coop && c>2)){if(Math.random()<CONFIG.BRICK_DENSITY){t.type=TILE_TYPE.BRICK;if(allowed.length>0&&Math.random()<den){const rt=allowed[Math.floor(Math.random()*allowed.length)];items.push({c:c,r:r,type:rt,hidden:true});}}}row.push(t);}mapGrid.push(row);}
 }
 function spawnBots(n){
-    for(let i=0;i<n;i++){
-        const id=-(i+1); // Negative IDs for bots
-        state.players[id]=new AIPlayer(id,CONFIG.COLS-2,CONFIG.ROWS-2); // Spawn far right
+    let spawned=0;
+    while(spawned<n){
+        const r=Math.floor(Math.random()*(CONFIG.ROWS-4))+4; // Filas 4 a 10 (evita top)
+        const c=Math.floor(Math.random()*(CONFIG.COLS-2))+1;
+        if(mapGrid[r][c].type===TILE_TYPE.EMPTY){
+            const id=-(spawned+1);
+            state.players[id]=new AIPlayer(id,c,r);
+            spawned++;
+        }
     }
 }
 function createBomb(c,r,o,rng){mapGrid[r][c].type=TILE_TYPE.BOMB;bombs.push(new Bomb(c,r,o,rng));}
