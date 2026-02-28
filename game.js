@@ -14,7 +14,7 @@ function loadAssets(){assets.spritesheet.src='sprites.png';assets.spritesheet.on
 function generateColoredSprites(){PALETTE.forEach((pal,idx)=>{const c=document.createElement('canvas');c.width=assets.spritesheet.width;c.height=assets.spritesheet.height;const ctx=c.getContext('2d');ctx.imageSmoothingEnabled=false;if(pal.filter!=='none')ctx.filter=pal.filter;ctx.drawImage(assets.spritesheet,0,0);assets.coloredSheets[idx]=c;});}
 function setFavicon(){const c=document.createElement('canvas');c.width=32;c.height=32;const ctx=c.getContext('2d');ctx.drawImage(assets.spritesheet,32,128,32,32,0,0,32,32);const l=document.getElementById('favicon');if(l)l.href=c.toDataURL();}
 function showMainMenu(){document.getElementById('screen-loading').style.display='none';document.getElementById('screen-login').style.display='none';document.getElementById('screen-mode-select').style.display='none';document.getElementById('screen-main-menu').style.display='flex';init();initUI();}
-function showModeSelect(){document.getElementById('screen-main-menu').style.display='none';document.getElementById('screen-mode-select').style.display='flex';}
+function showModeSelect(){document.getElementById('screen-main-menu').style.display='none';document.getElementById('screen-mode-select').style.display='flex';document.getElementById('create-room-id').value='';}
 function showJoinScreen(){document.getElementById('screen-main-menu').style.display='none';document.getElementById('screen-login').style.display='flex';}
 
 let mapGrid=[], bombs=[], explosions=[], items=[], particles=[];
@@ -129,18 +129,30 @@ class Player{
     }
 }
 class AIPlayer extends Player{
-    constructor(id,c,r){super(id,c,r,'BOT',6);this.aiTimer=0;this.aiState='ROAM';}
+    constructor(id,c,r){super(id,c,r,'BOT',6);this.aiTimer=0;this.currDir={x:0,y:0};}
     checkInput(){
-        if(this.isDead||state.winner)return;
+        if(this.isDead||state.winner||this.isMoving)return;
         this.aiTimer--;
         if(this.aiTimer<=0){
-            this.aiTimer=Math.random()*30+30;
+            this.aiTimer=Math.floor(Math.random()*20+10);
             const dirs=[{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
-            const d=dirs[Math.floor(Math.random()*dirs.length)];
-            state.input.x=d.x; state.input.y=d.y; state.input.active=true;
-            if(Math.random()<0.3) this.placeBomb();
+            this.currDir=dirs[Math.floor(Math.random()*dirs.length)];
+            if(Math.random()<0.1) this.placeBomb();
         }
-        super.checkInput();
+        const dx=this.currDir.x, dy=this.currDir.y;
+        if(dx===0&&dy===0)return;
+        let col=Math.round(this.x/CONFIG.TILE),row=Math.round(this.y/CONFIG.TILE),nextCol=col+dx,nextRow=row+dy;
+        if(nextCol>=0&&nextCol<CONFIG.COLS&&nextRow>=0&&nextRow<CONFIG.ROWS){
+            if(mapGrid[nextRow][nextCol].type===TILE_TYPE.EMPTY){
+                const b=bombs.find(x=>x.col===nextCol&&x.row===nextRow);
+                if(!b||b.exploded){
+                    this.targetX=nextCol*CONFIG.TILE;this.targetY=nextRow*CONFIG.TILE;this.isMoving=true;this.sentIdlePacket=false;
+                    let anim=this.animState,face=this.facingLeft;
+                    if(dy>0)anim='WALK_DOWN';else if(dy<0)anim='WALK_UP';else if(dx>0){anim='WALK_SIDE';face=false;}else if(dx<0){anim='WALK_SIDE';face=true;}
+                    net.broadcast({t:'m',tx:this.targetX,ty:this.targetY,x:this.x,y:this.y,id:this.id,a:anim,f:face,s:this.stats.speed});
+                }
+            }
+        }
     }
 }
 
@@ -171,9 +183,9 @@ function drawSprite(ctx,c,x,y,idx=-1){if(!assets.loaded||!c)return;let s=assets.
 const canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d'),net=new Net();
 window.onload=()=>{loadAssets(); document.addEventListener('click', ()=> { if(audioCtx.state==='suspended') audioCtx.resume(); }, {once:true});};
 function init(){ctx.imageSmoothingEnabled=false;window.addEventListener('resize',resizeViewport);setupInputs();if('ontouchstart'in window||navigator.maxTouchPoints>0)document.getElementById('gamepad-area').style.display='flex';resizeViewport();requestAnimationFrame(gameLoop);window.addEventListener('contextmenu',e=>e.preventDefault());}
-function createRoom(m){state.mode=m;const id=Math.floor(Math.random()*9000)+1000;document.getElementById('roomInput').value=id;connectToServer();}
+function createRoom(m){const v=document.getElementById('create-room-id').value.trim().toUpperCase();if(!v){alert("Ingresa un nombre para la sala");return;}state.mode=m;document.getElementById('roomInput').value=v;connectToServer();}
 function connectToServer(){const r=document.getElementById('roomInput').value;if(!r)return;document.getElementById('btnConnect').disabled=true;document.getElementById('btnConnect').innerText="...";net.connect(r.toUpperCase());}
-function enterLobby(id){state.status='LOBBY';document.getElementById('screen-login').style.display='none';document.getElementById('screen-lobby').style.display='flex';sendProfileUpdate();if(id===1){document.getElementById('btnStartGame').style.display='block';document.getElementById('btnStartGame').disabled=false;document.getElementById('lobby-msg').innerText="Eres el HOST.";}}
+function enterLobby(id){state.status='LOBBY';document.getElementById('screen-login').style.display='none';document.getElementById('screen-main-menu').style.display='none';document.getElementById('screen-mode-select').style.display='none';document.getElementById('screen-lobby').style.display='flex';sendProfileUpdate();if(id===1){document.getElementById('btnStartGame').style.display='block';document.getElementById('btnStartGame').disabled=false;document.getElementById('lobby-msg').innerText="Eres el HOST.";}}
 function hostStartGame(){
     if(net.id!==1)return;
     let lvl=parseInt(document.getElementById('set-level').value), den=parseFloat(document.getElementById('set-density').value);
@@ -219,7 +231,7 @@ function onNetData(d,pid){
 function getSpawnInfo(id){const x=(id===1||id===4)?1:CONFIG.COLS-2,y=(id===1||id===3)?1:CONFIG.ROWS-2;return{x:x,y:y};}
 function generateMap(den=0.6, allowed=[1,2,3], coop=false){
     mapGrid=[];items=[];const safe=(c,r)=>(c<=2&&r<=2)||(c>=CONFIG.COLS-3&&r>=CONFIG.ROWS-3)||(c>=CONFIG.COLS-3&&r<=2)||(c<=2&&r>=CONFIG.ROWS-3);
-    for(let r=0;r<CONFIG.ROWS;r++){let row=[];for(let c=0;c<CONFIG.COLS;c++){let t={type:TILE_TYPE.EMPTY};if(r===0||c===0||r===CONFIG.ROWS-1||c===CONFIG.COLS-1||(r%2===0&&c%2===0))t.type=TILE_TYPE.WALL;else if((!coop && !safe(c,r)) || (coop && c>2 && Math.random()<CONFIG.BRICK_DENSITY)){if(Math.random()<CONFIG.BRICK_DENSITY){t.type=TILE_TYPE.BRICK;if(allowed.length>0&&Math.random()<den){const rt=allowed[Math.floor(Math.random()*allowed.length)];items.push({c:c,r:r,type:rt,hidden:true});}}}row.push(t);}mapGrid.push(row);}
+    for(let r=0;r<CONFIG.ROWS;r++){let row=[];for(let c=0;c<CONFIG.COLS;c++){let t={type:TILE_TYPE.EMPTY};if(r===0||c===0||r===CONFIG.ROWS-1||c===CONFIG.COLS-1||(r%2===0&&c%2===0))t.type=TILE_TYPE.WALL;else if((!coop && !safe(c,r)) || (coop && c>2)){if(Math.random()<CONFIG.BRICK_DENSITY){t.type=TILE_TYPE.BRICK;if(allowed.length>0&&Math.random()<den){const rt=allowed[Math.floor(Math.random()*allowed.length)];items.push({c:c,r:r,type:rt,hidden:true});}}}row.push(t);}mapGrid.push(row);}
 }
 function spawnBots(n){
     for(let i=0;i<n;i++){

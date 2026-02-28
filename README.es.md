@@ -51,7 +51,9 @@ Este proyecto demuestra la capacidad de crear experiencias multijugador sincroni
 
 ## **📂 Contenido del Repositorio**
 
-* `index.html` — El cliente del juego (lógica, renderizado e interfaz).
+* `index.html` — Punto de entrada del cliente (estructura HTML).
+* `game.js` — Lógica del juego, renderizado y gestión de red.
+* `style.css` — Hoja de estilos para la interfaz y el juego.
 * `server.js` — El servidor WebSocket en Node.js.
 * `package.json` — Dependencias del servidor.
 * `sprites.png` — La hoja de sprites que contiene todos los recursos gráficos.

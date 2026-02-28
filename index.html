@@ -36,7 +36,7 @@
         <!-- NUEVO: MENÚ PRINCIPAL -->
         <div id="screen-main-menu" class="screen-layer" style="display:none;">
             <div class="panel">
-                <h1>Bombardo!💣</h1>
+                <h1>Bombardo!💣 (v7.1)</h1>
                 <button class="big-btn" onclick="showModeSelect()">CREAR SALA</button>
                 <button class="big-btn" onclick="showJoinScreen()">CONECTARSE</button>
             </div>
@@ -44,7 +44,9 @@
         <!-- NUEVO: SELECCIÓN DE MODO -->
         <div id="screen-mode-select" class="screen-layer" style="display:none;">
             <div class="panel">
-                <h1>SELECCIONAR MODO</h1>
+                <h1>CREAR SALA</h1>
+                <input type="text" id="create-room-id" placeholder="NOMBRE SALA" maxlength="10" style="text-transform:uppercase; margin-bottom: 10px;">
+                <div style="font-size:10px; color:#ccc; margin-bottom:5px;">SELECCIONAR MODO:</div>
                 <button class="big-btn" onclick="createRoom('COOP')">CAMPAÑA (1-2 JUG)</button>
                 <button class="big-btn" onclick="createRoom('PVP')">MULTIJUGADOR (2-4)</button>
                 <button onclick="showMainMenu()" style="margin-top:20px; background:#555;">VOLVER</button>

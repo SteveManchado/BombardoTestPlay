@@ -51,7 +51,9 @@ This project demonstrates the capability to create synchronized, low-latency mul
 
 ## **📂 Repository Contents**
 
-* `index.html` — The game client (logic, rendering, and UI).
+* `index.html` — The game client entry point (HTML structure).
+* `game.js` — Game logic, rendering, and network handling.
+* `style.css` — Stylesheets for the game UI.
 * `server.js` — The Node.js WebSocket server.
 * `package.json` — Dependencies for the server.
 * `sprites.png` — The sprite sheet containing all game assets.
